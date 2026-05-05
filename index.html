@@ -1,26 +1,21 @@
-body {
-  text-align: center;
-  font-family: sans-serif;
-}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>五目並べ</title>
 
-#board {
-  display: inline-block;
-  margin: 20px;
-}
+  <!-- ★これが超重要（CSS読み込み） -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-.row {
-  display: flex;
-}
+  <h1>五目並べ（CPU対戦）</h1>
 
-.cell {
-  width: 32px;
-  height: 32px;
-  border: 1px solid #999;
-  font-size: 20px;
-  line-height: 32px;
-  cursor: pointer;
-}
+  <div id="board"></div>
 
-.cell:hover {
-  background: #eee;
-}
+  <div id="info">あなたの番です</div>
+  <button onclick="resetGame()">リセット</button>
+
+  <script src="script.js"></script>
+</body>
+</html>
