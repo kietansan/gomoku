@@ -1,5 +1,4 @@
-const SIZE = 12;
-const POINTS = 13;
+const SIZE = 14;
 
 let board = [];
 let gameOver = false;
@@ -14,22 +13,23 @@ function init(){
 
   boardEl.innerHTML = "";
 
-  board = Array.from({length: POINTS}, () =>
-    Array(POINTS).fill(0)
+  board = Array.from({length: SIZE}, () =>
+    Array(SIZE).fill(0)
   );
 
   gameOver = false;
   infoEl.textContent = "あなたの番です";
 
   drawGrid();
-  drawPoints(); // ★これが重要
 }
 window.resetGame = init;
 
 /* =========================
-   12×12見た目
+   グリッド（クリック直結）
 ========================= */
 function drawGrid(){
+
+  const step = 420 / (SIZE-1);
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -37,35 +37,16 @@ function drawGrid(){
       const cell = document.createElement("div");
       cell.className = "cell";
 
+      cell.style.position = "absolute";
+      cell.style.width = "10px";
+      cell.style.height = "10px";
+
+      cell.style.left = (x * step) + "px";
+      cell.style.top  = (y * step) + "px";
+
+      cell.onclick = () => click(x,y);
+
       boardEl.appendChild(cell);
-    }
-  }
-}
-
-/* =========================
-   14点クリックレイヤー（超重要）
-========================= */
-function drawPoints(){
-
-  for(let y=0;y<POINTS;y++){
-    for(let x=0;x<POINTS;x++){
-
-      const p = document.createElement("div");
-      p.className = "point";
-
-      p.style.position = "absolute";
-      p.style.width = "0";
-      p.style.height = "0";
-
-      // ★座標補正（ここ重要）
-      const step = 420 / SIZE;
-
-      p.style.left = (x * step) + "px";
-      p.style.top  = (y * step) + "px";
-
-      p.onclick = () => click(x,y);
-
-      boardEl.appendChild(p);
     }
   }
 }
@@ -77,6 +58,7 @@ function click(x,y){
   if(board[y][x]) return;
 
   place(x,y,1);
+
   setTimeout(cpuMove,50);
 }
 
@@ -98,20 +80,20 @@ function render(){
 
   document.querySelectorAll(".stone").forEach(e=>e.remove());
 
-  const points = document.querySelectorAll(".point");
+  const cells = document.querySelectorAll(".cell");
 
-  for(let y=0;y<POINTS;y++){
-    for(let x=0;x<POINTS;x++){
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
 
       if(board[y][x]===0) continue;
 
-      const idx = y*POINTS + x;
-      const base = points[idx];
+      const idx = y*SIZE + x;
+      const cell = cells[idx];
 
       const stone = document.createElement("div");
       stone.className = "stone " + (board[y][x]===1?"black":"white");
 
-      base.appendChild(stone);
+      cell.appendChild(stone);
     }
   }
 }
@@ -144,8 +126,8 @@ function checkWin(x,y,p){
 /* ========================= */
 function cpuMove(){
 
-  for(let y=0;y<POINTS;y++){
-    for(let x=0;x<POINTS;x++){
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
 
       if(!board[y][x]){
         place(x,y,2);
