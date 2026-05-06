@@ -3,7 +3,6 @@ const SIZE = 15;
 let board = [];
 let gameOver = false;
 let lastMove = null;
-
 let gameId = 0;
 
 const boardEl = document.getElementById("board");
@@ -81,7 +80,7 @@ function playerMove(x,y){
 }
 
 /* =========================
-   CPUメイン
+   CPU
 ========================= */
 function cpuMove(id){
   if(gameOver || id !== gameId) return;
@@ -96,7 +95,7 @@ function cpuMove(id){
   m = findWin(1);
   if(m) return place(m.x,m.y,2);
 
-  // ③ ★3連・4連防御（修正版）
+  // ③ 危険防御（3連以上）
   m = findDanger(1);
   if(m) return place(m.x,m.y,2);
 
@@ -108,9 +107,9 @@ function cpuMove(id){
   m = findFork(2);
   if(m) return place(m.x,m.y,2);
 
-  // ⑥ 4手読み
-  m = searchBestMove(4);
-  if(m) return place(m.x,m.y,2);
+  // ⑥ 探索
+  m = bestMove();
+  return place(m.x,m.y,2);
 }
 
 /* =========================
@@ -124,7 +123,7 @@ function findWin(p){
 
       board[y][x]=p;
 
-      if(checkWin(x,y,p)){
+      if(getWinLine(x,y,p)){
         board[y][x]=0;
         return {x,y};
       }
@@ -136,7 +135,44 @@ function findWin(p){
 }
 
 /* =========================
-   ★危険判定（3連・4連統合）
+   ★勝利ライン確定（核心）
+========================= */
+function getWinLine(x,y,p){
+
+  for(const [dx,dy] of DIRS){
+
+    let line = [{x,y}];
+
+    // 正方向
+    let nx = x + dx;
+    let ny = y + dy;
+
+    while(board[ny]?.[nx] === p){
+      line.push({x:nx,y:ny});
+      nx += dx;
+      ny += dy;
+    }
+
+    // 逆方向
+    nx = x - dx;
+    ny = y - dy;
+
+    while(board[ny]?.[nx] === p){
+      line.unshift({x:nx,y:ny});
+      nx -= dx;
+      ny -= dy;
+    }
+
+    if(line.length >= 5){
+      return line;
+    }
+  }
+
+  return null;
+}
+
+/* =========================
+   危険検知（3連以上）
 ========================= */
 function findDanger(p){
 
@@ -148,10 +184,9 @@ function findDanger(p){
       board[y][x]=p;
 
       for(const [dx,dy] of DIRS){
-        const {count} = line(x,y,dx,dy,p);
+        const len = getLineCount(x,y,dx,dy,p);
 
-        // ★ここが本体
-        if(count >= 3){
+        if(len >= 3){
           board[y][x]=0;
           return {x,y};
         }
@@ -176,16 +211,16 @@ function findFork(p){
 
       board[y][x]=p;
 
-      let t = 0;
+      let t=0;
 
       for(const [dx,dy] of DIRS){
-        const {count} = line(x,y,dx,dy,p);
-        if(count === 3) t++;
+        const len = getLineCount(x,y,dx,dy,p);
+        if(len===3) t++;
       }
 
       board[y][x]=0;
 
-      if(t >= 2) return {x,y};
+      if(t>=2) return {x,y};
     }
   }
 
@@ -193,148 +228,9 @@ function findFork(p){
 }
 
 /* =========================
-   4手読み
+   ライン長
 ========================= */
-function searchBestMove(depth){
-
-  const moves = getMoves().slice(0, 8);
-
-  let best = null;
-  let bestScore = -Infinity;
-
-  for(const m of moves){
-
-    board[m.y][m.x] = 2;
-
-    const score = -minimax(depth-1, 1, -Infinity, Infinity);
-
-    board[m.y][m.x] = 0;
-
-    if(score > bestScore){
-      bestScore = score;
-      best = m;
-    }
-  }
-
-  return best;
-}
-
-/* =========================
-   ミニマックス
-========================= */
-function minimax(depth, turn, alpha, beta){
-
-  if(depth === 0 || gameOver){
-    return evaluate(2) - evaluate(1);
-  }
-
-  const moves = getMoves().slice(0, 6);
-
-  if(turn === 0){
-
-    let best = -Infinity;
-
-    for(const m of moves){
-
-      board[m.y][m.x] = 2;
-
-      const score = minimax(depth-1,1,alpha,beta);
-
-      board[m.y][m.x] = 0;
-
-      best = Math.max(best,score);
-      alpha = Math.max(alpha,best);
-
-      if(beta<=alpha) break;
-    }
-
-    return best;
-  }
-
-  else{
-
-    let best = Infinity;
-
-    for(const m of moves){
-
-      board[m.y][m.x] = 1;
-
-      const score = minimax(depth-1,0,alpha,beta);
-
-      board[m.y][m.x] = 0;
-
-      best = Math.min(best,score);
-      beta = Math.min(beta,best);
-
-      if(beta<=alpha) break;
-    }
-
-    return best;
-  }
-}
-
-/* =========================
-   候補手
-========================= */
-function getMoves(){
-
-  const moves = [];
-  const c = SIZE/2;
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]) continue;
-
-      let near = false;
-
-      for(let dy=-2;dy<=2;dy++){
-        for(let dx=-2;dx<=2;dx++){
-          if(board[y+dy]?.[x+dx]) near = true;
-        }
-      }
-
-      if(!near) continue;
-
-      moves.push({
-        x,y,
-        score: -(Math.abs(x-c)+Math.abs(y-c))
-      });
-    }
-  }
-
-  return moves.sort((a,b)=>b.score-a.score);
-}
-
-/* =========================
-   評価
-========================= */
-function evaluate(p){
-  let score=0;
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]!==p) continue;
-
-      for(const [dx,dy] of DIRS){
-        const {count} = line(x,y,dx,dy,p);
-
-        if(count>=5) score+=1000000;
-        else if(count===4) score+=50000;
-        else if(count===3) score+=8000;
-        else if(count===2) score+=500;
-      }
-    }
-  }
-
-  return score;
-}
-
-/* =========================
-   ライン
-========================= */
-function line(x,y,dx,dy,p){
+function getLineCount(x,y,dx,dy,p){
   let c=1;
 
   let nx=x+dx, ny=y+dy;
@@ -347,38 +243,62 @@ function line(x,y,dx,dy,p){
     c++; nx-=dx; ny-=dy;
   }
 
-  return {count:c};
+  return c;
 }
 
 /* =========================
-   勝利判定
+   評価
 ========================= */
-function checkWin(x,y,p){
+function bestMove(){
 
-  for(const [dx,dy] of DIRS){
+  let best=null;
+  let bestScore=-Infinity;
 
-    let c=1;
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
 
-    for(const d of [-1,1]){
+      if(board[y][x]) continue;
 
-      let nx=x+dx*d;
-      let ny=y+dy*d;
+      board[y][x]=2;
 
-      while(board[ny]?.[nx]===p){
-        c++;
-        nx+=dx*d;
-        ny+=dy*d;
+      let score = evaluate(2) - evaluate(1)*1.1;
+
+      board[y][x]=0;
+
+      if(score>bestScore){
+        bestScore=score;
+        best={x,y};
       }
-    }
-
-    if(c>=5){
-      gameOver=true;
-      infoEl.textContent = p===2 ? "CPUの勝ち" : "あなたの勝ち";
-      return true;
     }
   }
 
-  return false;
+  return best;
+}
+
+/* =========================
+   評価関数
+========================= */
+function evaluate(p){
+
+  let score=0;
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]!==p) continue;
+
+      for(const [dx,dy] of DIRS){
+        const len = getLineCount(x,y,dx,dy,p);
+
+        if(len>=5) score+=1000000;
+        else if(len===4) score+=50000;
+        else if(len===3) score+=8000;
+        else if(len===2) score+=500;
+      }
+    }
+  }
+
+  return score;
 }
 
 /* =========================
@@ -394,7 +314,13 @@ function place(x,y,p){
   playSound();
   draw();
 
-  checkWin(x,y,p);
+  const winLine = getWinLine(x,y,p);
+
+  if(winLine){
+    gameOver=true;
+    infoEl.textContent = (p===2 ? "CPUの勝ち" : "あなたの勝ち");
+    console.log("WIN LINE:", winLine);
+  }
 }
 
 /* =========================
