@@ -8,6 +8,13 @@ let canvas, ctx;
 
 const WOOD = "#d8b56a";
 
+/* 星の位置（13路） */
+const HOSHI = [
+  [3,3],[3,9],
+  [9,3],[9,9],
+  [6,6]
+];
+
 window.onload = () => {
 
   canvas = document.getElementById("board");
@@ -24,13 +31,12 @@ window.onload = () => {
 /* 描画 */
 function draw(){
 
-  // 背景（完全フラット）
+  // 背景
   ctx.fillStyle = WOOD;
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
   // 線
   ctx.strokeStyle = "#333";
-  ctx.lineWidth = 1;
 
   for(let i=0;i<SIZE;i++){
 
@@ -45,20 +51,18 @@ function draw(){
     ctx.stroke();
   }
 
-  // ★ 追加：交点の「点」
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
+  // ★ 星（5点のみ）
+  for(const [x,y] of HOSHI){
 
-      ctx.beginPath();
-      ctx.arc(
-        MARGIN + x*CELL,
-        MARGIN + y*CELL,
-        2,0,Math.PI*2
-      );
+    ctx.beginPath();
+    ctx.arc(
+      MARGIN + x*CELL,
+      MARGIN + y*CELL,
+      3,0,Math.PI*2
+    );
 
-      ctx.fillStyle = "#222";
-      ctx.fill();
-    }
+    ctx.fillStyle = "#222";
+    ctx.fill();
   }
 
   // 石
