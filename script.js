@@ -22,11 +22,12 @@ function init(){
 
   drawGrid();
   drawStars();
+  render();
 }
 window.resetGame = init;
 
 /* =========================
-   グリッド生成
+   13×13セル生成
 ========================= */
 function drawGrid(){
 
@@ -36,7 +37,7 @@ function drawGrid(){
       const cell = document.createElement("div");
       cell.className = "cell";
 
-      cell.onclick = () => clickCell(x,y);
+      cell.onclick = () => click(x,y);
 
       boardEl.appendChild(cell);
     }
@@ -44,7 +45,7 @@ function drawGrid(){
 }
 
 /* =========================
-   星（天元・星）
+   星（天元など）
 ========================= */
 function drawStars(){
 
@@ -55,20 +56,21 @@ function drawStars(){
   const cells = document.querySelectorAll(".cell");
 
   for(const [x,y] of stars){
+
     const idx = y * SIZE + x;
-    const starCell = cells[idx];
+    const cell = cells[idx];
 
-    const s = document.createElement("div");
-    s.className = "star";
+    const star = document.createElement("div");
+    star.className = "star";
 
-    starCell.appendChild(s);
+    cell.appendChild(star);
   }
 }
 
 /* =========================
    クリック処理
 ========================= */
-function clickCell(x,y){
+function click(x,y){
 
   if(gameOver) return;
   if(board[y][x]) return;
@@ -97,7 +99,7 @@ function place(x,y,p){
 }
 
 /* =========================
-   描画
+   描画（完全同期）
 ========================= */
 function render(){
 
@@ -108,13 +110,13 @@ function render(){
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
-      if(board[y][x]===0) continue;
+      if(board[y][x] === 0) continue;
 
       const idx = y * SIZE + x;
       const cell = cells[idx];
 
       const stone = document.createElement("div");
-      stone.className = "stone " + (board[y][x]===1 ? "black" : "white");
+      stone.className = "stone " + (board[y][x]===1 ? "black":"white");
 
       cell.appendChild(stone);
     }
@@ -149,7 +151,7 @@ function checkWin(x,y,p){
 }
 
 /* =========================
-   CPU（安定版）
+   CPU（安定版シンプルAI）
 ========================= */
 function cpuMove(){
 
@@ -186,16 +188,25 @@ function cpuMove(){
     }
   }
 
-  // ③ ランダム埋め（最低限）
+  // ③ 中央優先（自然な手）
+  const center = Math.floor(SIZE/2);
+
+  const priority = [];
+
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
+      if(board[y][x]) continue;
 
-      if(!board[y][x]){
-        place(x,y,2);
-        return;
-      }
+      const dist = Math.abs(x-center)+Math.abs(y-center);
+      priority.push({x,y,dist});
     }
   }
+
+  priority.sort((a,b)=>a.dist-b.dist);
+
+  const best = priority[0];
+
+  place(best.x,best.y,2);
 }
 
 /* =========================
