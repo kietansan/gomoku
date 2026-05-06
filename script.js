@@ -39,7 +39,6 @@ function draw() {
       cell.onclick = () => playerMove(x, y);
       row.appendChild(cell);
     }
-
     boardEl.appendChild(row);
   }
 }
@@ -60,42 +59,14 @@ function playerMove(x, y) {
 
   draw();
   infoEl.textContent = "CPU思考中...";
-  setTimeout(cpuMove, 20);
+  setTimeout(cpuMove, 30);
 }
 
 /* ===== CPU ===== */
 function cpuMove() {
-  let finished = false;
+  const move = getBestMove();
+  if (!move) return;
 
-  // 強制復帰（フリーズ防止）
-  setTimeout(() => {
-    if (!finished) {
-      const fallback = getMoves()[0] || { x: 7, y: 7 };
-      placeCPU(fallback);
-    }
-  }, 200);
-
-  try {
-    const move = getBestMove();
-    finished = true;
-
-    if (!move) {
-      const fallback = getMoves()[0] || { x: 7, y: 7 };
-      placeCPU(fallback);
-      return;
-    }
-
-    placeCPU(move);
-
-  } catch (e) {
-    console.error(e);
-    const fallback = getMoves()[0] || { x: 7, y: 7 };
-    placeCPU(fallback);
-  }
-}
-
-/* ===== CPU配置 ===== */
-function placeCPU(move) {
   board[move.y][move.x] = 2;
   playSound();
 
@@ -118,53 +89,64 @@ function checkWin(x, y, p) {
     let count = 1;
 
     for (let d = -1; d <= 1; d += 2) {
-      let nx = x + dx * d;
-      let ny = y + dy * d;
+      let nx = x + dx*d;
+      let ny = y + dy*d;
 
       while (board[ny]?.[nx] === p) {
         count++;
-        nx += dx * d;
-        ny += dy * d;
+        nx += dx*d;
+        ny += dy*d;
       }
     }
 
     if (count >= 5) return true;
   }
-
   return false;
 }
 
-/* ===== 評価 ===== */
-function getScore(x, y, p) {
-  let score = 0;
-  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+/* ===== 評価関数（強化） ===== */
+function evaluate(player) {
+  const opponent = player === 1 ? 2 : 1;
 
-  for (let [dx, dy] of dirs) {
-    let count = 1;
-    let open = 0;
+  function score(p) {
+    let total = 0;
+    const dirs = [[1,0],[0,1],[1,1],[1,-1]];
 
-    let nx = x + dx, ny = y + dy;
-    while (board[ny]?.[nx] === p) {
-      count++; nx += dx; ny += dy;
+    for (let y = 0; y < SIZE; y++) {
+      for (let x = 0; x < SIZE; x++) {
+        if (board[y][x] !== p) continue;
+
+        for (let [dx, dy] of dirs) {
+          let count = 1;
+          let open = 0;
+
+          let nx = x + dx, ny = y + dy;
+          while (board[ny]?.[nx] === p) {
+            count++; nx += dx; ny += dy;
+          }
+          if (board[ny]?.[nx] === 0) open++;
+
+          nx = x - dx; ny = y - dy;
+          while (board[ny]?.[nx] === p) {
+            count++; nx -= dx; ny -= dy;
+          }
+          if (board[ny]?.[nx] === 0) open++;
+
+          if (count >= 5) return 1000000;
+          if (count === 4 && open === 2) total += 100000;
+          else if (count === 4 && open === 1) total += 10000;
+          else if (count === 3 && open === 2) total += 3000;
+          else if (count === 3 && open === 1) total += 300;
+        }
+      }
     }
-    if (board[ny]?.[nx] === 0) open++;
-
-    nx = x - dx; ny = y - dy;
-    while (board[ny]?.[nx] === p) {
-      count++; nx -= dx; ny -= dy;
-    }
-    if (board[ny]?.[nx] === 0) open++;
-
-    if (count >= 5) score += 1000000;
-    else if (count === 4 && open > 0) score += 50000;
-    else if (count === 3 && open > 0) score += 5000;
-    else if (count === 2) score += 200;
+    return total;
   }
 
-  return score;
+  return score(player) - score(opponent) * 1.2;
 }
 
-/* ===== 候補手 ===== */
+/* ===== 候補手（厳選） ===== */
 function getMoves() {
   const moves = [];
 
@@ -172,26 +154,68 @@ function getMoves() {
     for (let x = 0; x < SIZE; x++) {
       if (board[y][x] !== 0) continue;
 
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (board[y + dy]?.[x + dx] !== 0) {
-            moves.push({ x, y });
-            dy = 2;
-            break;
-          }
+      let near = false;
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          if (board[y + dy]?.[x + dx] !== 0) near = true;
         }
+      }
+
+      if (near) {
+        board[y][x] = 2;
+        let score = evaluate(2);
+        board[y][x] = 0;
+
+        moves.push({ x, y, score });
       }
     }
   }
 
-  return moves.length ? moves : [{ x: 7, y: 7 }];
+  moves.sort((a, b) => b.score - a.score);
+  return moves.slice(0, 10);
 }
 
-/* ===== CPU思考（強化版） ===== */
+/* ===== ミニマックス ===== */
+function minimax(depth, alpha, beta, maximizing) {
+  if (depth === 0) return evaluate(2);
+
+  const moves = getMoves();
+
+  if (maximizing) {
+    let max = -Infinity;
+
+    for (let m of moves) {
+      board[m.y][m.x] = 2;
+      let val = minimax(depth - 1, alpha, beta, false);
+      board[m.y][m.x] = 0;
+
+      max = Math.max(max, val);
+      alpha = Math.max(alpha, val);
+      if (beta <= alpha) break;
+    }
+    return max;
+
+  } else {
+    let min = Infinity;
+
+    for (let m of moves) {
+      board[m.y][m.x] = 1;
+      let val = minimax(depth - 1, alpha, beta, true);
+      board[m.y][m.x] = 0;
+
+      min = Math.min(min, val);
+      beta = Math.min(beta, val);
+      if (beta <= alpha) break;
+    }
+    return min;
+  }
+}
+
+/* ===== 最終判断 ===== */
 function getBestMove() {
   const moves = getMoves();
 
-  // ① 即勝ち
+  // 即勝ち
   for (let m of moves) {
     board[m.y][m.x] = 2;
     if (checkWin(m.x, m.y, 2)) {
@@ -201,7 +225,7 @@ function getBestMove() {
     board[m.y][m.x] = 0;
   }
 
-  // ② 即防御
+  // 防御
   for (let m of moves) {
     board[m.y][m.x] = 1;
     if (checkWin(m.x, m.y, 1)) {
@@ -214,32 +238,10 @@ function getBestMove() {
   let best = moves[0];
   let bestScore = -Infinity;
 
-  const limit = Math.min(moves.length, 15);
-
-  for (let i = 0; i < limit; i++) {
-    const m = moves[i];
-
+  for (let m of moves) {
     board[m.y][m.x] = 2;
-    let myScore = getScore(m.x, m.y, 2);
-
-    // ★ 相手の最善手を見る
-    let worstEnemy = 0;
-    const enemyMoves = getMoves();
-    const enemyLimit = Math.min(enemyMoves.length, 8);
-
-    for (let j = 0; j < enemyLimit; j++) {
-      const e = enemyMoves[j];
-
-      board[e.y][e.x] = 1;
-      let s = getScore(e.x, e.y, 1);
-      board[e.y][e.x] = 0;
-
-      if (s > worstEnemy) worstEnemy = s;
-    }
-
+    let score = minimax(3, -Infinity, Infinity, false);
     board[m.y][m.x] = 0;
-
-    let score = myScore - worstEnemy * 1.3;
 
     if (score > bestScore) {
       bestScore = score;
@@ -250,7 +252,6 @@ function getBestMove() {
   return best;
 }
 
-/* ===== リセット ===== */
 function resetGame() {
   init();
   infoEl.textContent = "あなたの番です";
