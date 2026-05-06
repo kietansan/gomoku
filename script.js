@@ -66,7 +66,7 @@ function playerMove(x,y){
 }
 
 /* =========================
-   CPU（αβミニ版）
+   CPU（深さ4αβ）
 ========================= */
 function cpuMove(){
   if(gameOver) return;
@@ -79,7 +79,7 @@ function cpuMove(){
   for(const m of moves){
     board[m.y][m.x] = 2;
 
-    const score = alphaBeta(2, 3, -Infinity, Infinity, false);
+    const score = alphaBeta(3, 4, -Infinity, Infinity, false);
 
     board[m.y][m.x] = 0;
 
@@ -93,7 +93,7 @@ function cpuMove(){
 }
 
 /* =========================
-   αβ探索（深さ3）
+   αβ探索（深さ4）
 ========================= */
 function alphaBeta(p, depth, alpha, beta, maximizing){
 
@@ -102,54 +102,54 @@ function alphaBeta(p, depth, alpha, beta, maximizing){
   const moves = getMoves();
 
   if(maximizing){
-    let maxEval = -Infinity;
+    let max = -Infinity;
 
     for(const m of moves){
       board[m.y][m.x] = p;
 
       if(checkWin(m.x,m.y,p)){
         board[m.y][m.x]=0;
-        return 100000;
+        return 1000000;
       }
 
       const val = alphaBeta(3-p, depth-1, alpha, beta, false);
 
       board[m.y][m.x] = 0;
 
-      maxEval = Math.max(maxEval, val);
+      max = Math.max(max, val);
       alpha = Math.max(alpha, val);
 
-      if(beta <= alpha) break;
+      if(beta <= alpha) break; // 枝刈り
     }
 
-    return maxEval;
+    return max;
   } else {
-    let minEval = Infinity;
+    let min = Infinity;
 
     for(const m of moves){
       board[m.y][m.x] = p;
 
       if(checkWin(m.x,m.y,p)){
         board[m.y][m.x]=0;
-        return -100000;
+        return -1000000;
       }
 
       const val = alphaBeta(3-p, depth-1, alpha, beta, true);
 
       board[m.y][m.x] = 0;
 
-      minEval = Math.min(minEval, val);
+      min = Math.min(min, val);
       beta = Math.min(beta, val);
 
       if(beta <= alpha) break;
     }
 
-    return minEval;
+    return min;
   }
 }
 
 /* =========================
-   候補手（超重要）
+   候補手（超重要：8手制限）
 ========================= */
 function getMoves(){
   const moves = [];
@@ -159,11 +159,11 @@ function getMoves(){
 
       if(board[y][x]) continue;
 
-      let near = false;
+      let near=false;
 
       for(let dy=-2;dy<=2;dy++){
         for(let dx=-2;dx<=2;dx++){
-          if(board[y+dy]?.[x+dx]) near = true;
+          if(board[y+dy]?.[x+dx]) near=true;
         }
       }
 
@@ -171,57 +171,57 @@ function getMoves(){
     }
   }
 
-  // 評価で上位だけ残す（10手）
-  moves.sort((a,b)=>evaluateMove(b.x,b.y)-evaluateMove(a.x,a.y));
+  // ★フォーク・即死優先ソート
+  moves.sort((a,b)=>moveScore(b)-moveScore(a));
 
-  return moves.slice(0,10);
+  return moves.slice(0,8);
 }
 
 /* =========================
-   1手評価（軽量）
+   手の危険度評価（超重要）
 ========================= */
-function evaluateMove(x,y){
+function moveScore(m){
 
-  let score = 0;
+  let score=0;
 
   for(const p of [1,2]){
-    board[y][x] = p;
+    board[m.y][m.x]=p;
 
     for(const [dx,dy] of DIRS){
-      const {count,open} = line(x,y,dx,dy,p);
+      const {count,open}=line(m.x,m.y,dx,dy,p);
 
-      if(count>=5) score += (p===2?100000:-100000);
-      else if(count===4) score += (p===2?50000:-50000);
-      else if(count===3 && open===2) score += (p===2?8000:-8000);
-      else if(count===2) score += (p===2?500:-500);
+      if(count>=5) score += (p===2?1000000:-1000000);
+      else if(count===4) score += (p===2?80000:-80000);
+      else if(count===3 && open===2) score += (p===2?12000:-12000);
+      else if(count===2) score += (p===2?800:-800);
     }
 
-    board[y][x] = 0;
+    board[m.y][m.x]=0;
   }
 
   return score;
 }
 
 /* =========================
-   総合評価
+   評価関数
 ========================= */
 function evaluate(){
 
-  let score = 0;
+  let score=0;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
-      const p = board[y][x];
+      const p=board[y][x];
       if(!p) continue;
 
       for(const [dx,dy] of DIRS){
-        const {count,open} = line(x,y,dx,dy,p);
+        const {count,open}=line(x,y,dx,dy,p);
 
         if(count>=5) score += (p===2?1000000:-1000000);
-        else if(count===4) score += (p===2?50000:-50000);
-        else if(count===3 && open===2) score += (p===2?8000:-8000);
-        else if(count===2) score += (p===2?500:-500);
+        else if(count===4) score += (p===2?60000:-60000);
+        else if(count===3 && open===2) score += (p===2?10000:-10000);
+        else if(count===2) score += (p===2?700:-700);
       }
     }
   }
@@ -230,7 +230,7 @@ function evaluate(){
 }
 
 /* =========================
-   ライン判定
+   ライン
 ========================= */
 function line(x,y,dx,dy,p){
   let c=1, open=0;
@@ -276,6 +276,8 @@ function checkWin(x,y,p){
 function place(x,y,p){
   board[y][x]=p;
   lastMove={x,y};
+
+  playSound();
   draw();
 
   if(checkWin(x,y,p)){
@@ -284,9 +286,13 @@ function place(x,y,p){
   }
 }
 
-/* =========================
-   リセット
-========================= */
+/* 音 */
+function playSound(){
+  sound.currentTime=0;
+  sound.play().catch(()=>{});
+}
+
+/* リセット */
 function resetGame(){
   init();
 }
