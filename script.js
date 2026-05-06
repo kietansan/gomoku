@@ -4,7 +4,6 @@ let board = [];
 let gameOver = false;
 let lastMove = null;
 let gameId = 0;
-
 let cpuStartTime = 0;
 
 const boardEl = document.getElementById("board");
@@ -20,7 +19,7 @@ function init(){
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
   lastMove = null;
-  infoEl.textContent = "あなたの番です";
+  setInfo("あなたの番です");
   draw();
 }
 
@@ -30,6 +29,13 @@ function resetGame(){
 }
 
 window.resetGame = resetGame;
+
+/* =========================
+   UI統一（重要）
+========================= */
+function setInfo(text){
+  infoEl.textContent = text;
+}
 
 /* =========================
    描画
@@ -80,31 +86,26 @@ function playerMove(x,y){
   setTimeout(()=>{
     if(gameOver || id !== gameId) return;
     cpuMove(id);
-  }, 50);
+  },50);
 }
 
 /* =========================
-   CPU
+   CPU（4手読み）
 ========================= */
 function cpuMove(id){
   if(gameOver || id !== gameId) return;
 
   cpuStartTime = Date.now();
-  setInfo("CPU思考中...");
 
-  let move = searchBestMove(2, 4);
+  const move = searchBestMove(2, 4);
 
   if(gameOver || id !== gameId) return;
 
   place(move.x, move.y, 2);
-
-  if(!gameOver){
-    setInfo("あなたの番です");
-  }
 }
 
 /* =========================
-   4手読み（タイム制御付き）
+   4手読み（軽量ミニマックス）
 ========================= */
 function searchBestMove(p, depth){
 
@@ -119,7 +120,7 @@ function searchBestMove(p, depth){
 
     board[m.y][m.x] = p;
 
-    let score = minimax(3 - p, depth - 1, false);
+    const score = minimax(3 - p, depth - 1, false);
 
     board[m.y][m.x] = 0;
 
@@ -133,7 +134,7 @@ function searchBestMove(p, depth){
 }
 
 /* =========================
-   ミニマックス（軽量）
+   ミニマックス
 ========================= */
 function minimax(p, depth, isMax){
 
@@ -150,7 +151,7 @@ function minimax(p, depth, isMax){
 
     board[m.y][m.x] = p;
 
-    let score = minimax(3 - p, depth - 1, !isMax);
+    const score = minimax(3 - p, depth - 1, !isMax);
 
     board[m.y][m.x] = 0;
 
@@ -165,14 +166,14 @@ function minimax(p, depth, isMax){
 }
 
 /* =========================
-   時間制御（5秒）
+   5秒制限
 ========================= */
 function timeUp(){
   return (Date.now() - cpuStartTime) > 5000;
 }
 
 /* =========================
-   候補手（安定核）
+   候補手（安定化）
 ========================= */
 function getMoves(){
 
@@ -269,7 +270,7 @@ function checkWin(x,y,p){
 }
 
 /* =========================
-   着手
+   着手（UI責任ここに集約）
 ========================= */
 function place(x,y,p){
 
@@ -283,16 +284,16 @@ function place(x,y,p){
   if(checkWin(x,y,p)){
     gameOver=true;
     setInfo(p===2 ? "CPUの勝ち" : "あなたの勝ち");
+    playSound();
+    return;
   }
 
   playSound();
-}
 
-/* =========================
-   UI表示
-========================= */
-function setInfo(text){
-  infoEl.textContent = text;
+  // ★重要：UIはここで一元管理
+  if(p===2){
+    setInfo("あなたの番です");
+  }
 }
 
 /* =========================
@@ -303,7 +304,4 @@ function playSound(){
   sound.play().catch(()=>{});
 }
 
-/* =========================
-   起動
-========================= */
 init();
