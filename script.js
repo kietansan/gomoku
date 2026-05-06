@@ -38,7 +38,7 @@ function setInfo(text){
 }
 
 /* =========================
-   木目
+   木目（軽量）
 ========================= */
 function drawWood(){
 
@@ -124,7 +124,7 @@ function drawStone(x,y,color){
 }
 
 /* =========================
-   人間入力
+   入力
 ========================= */
 document.addEventListener("click",(e)=>{
 
@@ -151,11 +151,11 @@ document.addEventListener("click",(e)=>{
     return;
   }
 
-  setTimeout(cpuMove,80);
+  setTimeout(cpuMove,60);
 });
 
 /* =========================
-   CPU（修正版AI）
+   CPU（正規化AI）
 ========================= */
 function cpuMove(){
 
@@ -171,8 +171,8 @@ function cpuMove(){
   move = findWinningMove(1);
   if(move) return place(move.x,move.y,2);
 
-  // ★③ 3連防御（修正済み：形ではなく「即4化判定」）
-  move = findThreatMove(1);
+  // ③ ★3連防御（修正版：形ではなく「即4化チェック」）
+  move = findThreeThreatBlock(1);
   if(move) return place(move.x,move.y,2);
 
   // ④ 候補生成
@@ -201,24 +201,24 @@ function cpuMove(){
 }
 
 /* =========================
-   ★3連の本質防御（重要修正）
-   「そこに置いたら即勝ちになるか」で判定
+   ★3連防御（本質修正版）
+   「そこに置いたら相手が即勝ちになるか」
 ========================= */
-function findThreatMove(p){
+function findThreeThreatBlock(player){
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
       if(board[y][x]) continue;
 
-      board[y][x]=p;
+      board[y][x]=player;
 
-      // ★本質：即勝ちラインに変化するか
-      const win = findWinningMove(p);
+      // ★本質：その結果、相手に即勝ちが生まれるか
+      const threat = findWinningMove(player);
 
       board[y][x]=0;
 
-      if(win) return {x,y};
+      if(threat) return {x,y};
     }
   }
 
@@ -226,7 +226,7 @@ function findThreatMove(p){
 }
 
 /* =========================
-   軽量3手読み
+   軽量探索
 ========================= */
 function lightSearch(depth,maxDepth,isHuman){
 
