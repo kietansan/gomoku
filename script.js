@@ -60,7 +60,6 @@ function draw(){
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-
       const node=document.createElement("div");
       node.className="node";
       node.style.gridColumn=x+1;
@@ -138,9 +137,10 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* 候補手 */
+/* 候補手（重要：強い順） */
 function getMoves(){
   const moves=[];
+
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
@@ -155,28 +155,32 @@ function getMoves(){
         }
         if(near) break;
       }
-      if(near) moves.push({x,y});
+
+      if(near){
+        const score = evalMove(x,y,2);
+        moves.push({x,y,score});
+      }
     }
   }
-  return moves.length?moves:[{x:6,y:6}];
+
+  // スコア順ソート
+  moves.sort((a,b)=>b.score-a.score);
+
+  return moves.slice(0,8); // ★重要：上位のみ
 }
 
-/* 危険検出 */
-function findDanger(player){
-  for(let m of getMoves()){
-    board[m.y][m.x]=player;
-    const s=evaluate();
-    board[m.y][m.x]=0;
-
-    if(player===1 && s<-2000) return m;
-  }
-  return null;
+/* 手の評価 */
+function evalMove(x,y,p){
+  board[y][x]=p;
+  const s = evaluate();
+  board[y][x]=0;
+  return s;
 }
 
 /* CPU */
 function cpuMove(){
 
-  // 勝ち
+  // 即勝ち
   for(let m of getMoves()){
     board[m.y][m.x]=2;
     if(checkWin(m.x,m.y,2)){
@@ -187,7 +191,7 @@ function cpuMove(){
     board[m.y][m.x]=0;
   }
 
-  // 防御
+  // 即防御
   for(let m of getMoves()){
     board[m.y][m.x]=1;
     if(checkWin(m.x,m.y,1)){
@@ -198,76 +202,67 @@ function cpuMove(){
     board[m.y][m.x]=0;
   }
 
-  // 三連防御
-  const d=findDanger(1);
-  if(d){
-    place(d.x,d.y,2);
-    return;
-  }
+  const limit = performance.now()+3000;
 
-  // 3秒制限探索
-  const limit=performance.now()+3000;
   let best=null;
+  let bestScore=-Infinity;
 
-  for(let depth=1;depth<=4;depth++){
-    const r=minimax(depth,true,-Infinity,Infinity,limit);
+  const moves = getMoves();
+
+  for(let m of moves){
     if(performance.now()>limit) break;
-    if(r.move) best=r.move;
+
+    const score = search(m.x,m.y,2,3,limit);
+
+    if(score>bestScore){
+      bestScore=score;
+      best=m;
+    }
   }
 
-  if(best) place(best.x,best.y,2);
-}
-
-/* ミニマックス */
-function minimax(depth,isMax,alpha,beta,limit){
-
-  if(performance.now()>limit) return {score:evaluate()};
-  if(depth===0) return {score:evaluate()};
-
-  const moves=getMoves();
-  let bestMove=null;
-
-  if(isMax){
-    let max=-Infinity;
-    for(let m of moves){
-      board[m.y][m.x]=2;
-
-      if(checkWin(m.x,m.y,2)){
-        board[m.y][m.x]=0;
-        return {score:100000,move:m};
-      }
-
-      const val=minimax(depth-1,false,alpha,beta,limit).score;
-      board[m.y][m.x]=0;
-
-      if(val>max){max=val;bestMove=m;}
-      alpha=Math.max(alpha,val);
-      if(beta<=alpha) break;
-    }
-    return {score:max,move:bestMove};
-
-  }else{
-    let min=Infinity;
-    for(let m of moves){
-      board[m.y][m.x]=1;
-
-      if(checkWin(m.x,m.y,1)){
-        board[m.y][m.x]=0;
-        return {score:-100000,move:m};
-      }
-
-      const val=minimax(depth-1,true,alpha,beta,limit).score;
-      board[m.y][m.x]=0;
-
-      if(val<min){min=val;bestMove=m;}
-      beta=Math.min(beta,val);
-      if(beta<=alpha) break;
-    }
-    return {score:min,move:bestMove};
+  if(best){
+    place(best.x,best.y,2);
   }
 }
 
-/* 評価 */
+/* 探索（シンプル深さ優先） */
+function search(x,y,p,depth,limit){
+
+  if(performance.now()>limit) return evaluate();
+
+  board[y][x]=p;
+
+  if(checkWin(x,y,p)){
+    board[y][x]=0;
+    return p===2 ? 100000 : -100000;
+  }
+
+  if(depth===0){
+    const val=evaluate();
+    board[y][x]=0;
+    return val;
+  }
+
+  const nextMoves=getMoves();
+
+  let best = (p===2) ? -Infinity : Infinity;
+
+  for(let m of nextMoves){
+
+    const val = search(m.x,m.y, p===2?1:2, depth-1, limit);
+
+    if(p===2){
+      if(val>best) best=val;
+    }else{
+      if(val<best) best=val;
+    }
+  }
+
+  board[y][x]=0;
+  return best;
+}
+
+/* 評価（重要） */
 function evaluate(){
   let score=0;
 
@@ -289,9 +284,9 @@ function evaluate(){
 
         let val=0;
         if(count>=5) val=100000;
-        else if(count===4&&open===2) val=20000;
-        else if(count===4&&open===1) val=8000;
-        else if(count===3&&open===2) val=4000;
+        else if(count===4&&open===2) val=30000;
+        else if(count===4&&open===1) val=10000;
+        else if(count===3&&open===2) val=5000;
         else if(count===3&&open===1) val=1000;
 
         score += (p===2?val:-val);
