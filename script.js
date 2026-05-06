@@ -50,11 +50,9 @@ function drawWood(){
 
   for(let i=0;i<d.length;i+=4){
 
-    const grain = Math.random()*25;
+    const g = 200 + Math.random()*30;
 
-    const base = 200 + grain;
-
-    d[i]=base;
+    d[i]=g;
     d[i+1]=170;
     d[i+2]=110;
     d[i+3]=255;
@@ -126,7 +124,7 @@ function drawStone(x,y,color){
 }
 
 /* =========================
-   入力
+   人間入力
 ========================= */
 document.addEventListener("click",(e)=>{
 
@@ -157,7 +155,7 @@ document.addEventListener("click",(e)=>{
 });
 
 /* =========================
-   CPU
+   CPU（修正版AI）
 ========================= */
 function cpuMove(){
 
@@ -169,15 +167,15 @@ function cpuMove(){
   move = findWinningMove(2);
   if(move) return place(move.x,move.y,2);
 
-  // ② 即死防御（5連）
+  // ② 即死防御
   move = findWinningMove(1);
   if(move) return place(move.x,move.y,2);
 
-  // ★②.5 3連防御（追加）
-  move = findOpenThreeBlock();
+  // ★③ 3連防御（修正済み：形ではなく「即4化判定」）
+  move = findThreatMove(1);
   if(move) return place(move.x,move.y,2);
 
-  // ③ 候補生成
+  // ④ 候補生成
   const candidates = generateMoves();
 
   let best=null;
@@ -203,7 +201,32 @@ function cpuMove(){
 }
 
 /* =========================
-   軽量探索
+   ★3連の本質防御（重要修正）
+   「そこに置いたら即勝ちになるか」で判定
+========================= */
+function findThreatMove(p){
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]) continue;
+
+      board[y][x]=p;
+
+      // ★本質：即勝ちラインに変化するか
+      const win = findWinningMove(p);
+
+      board[y][x]=0;
+
+      if(win) return {x,y};
+    }
+  }
+
+  return null;
+}
+
+/* =========================
+   軽量3手読み
 ========================= */
 function lightSearch(depth,maxDepth,isHuman){
 
@@ -333,63 +356,6 @@ function findWinningMove(p){
   }
 
   return null;
-}
-
-/* =========================
-   ★3連防御（追加）
-========================= */
-function findOpenThreeBlock(){
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]) continue;
-
-      board[y][x]=1;
-
-      if(isOpenThree(1)){
-        board[y][x]=0;
-        return {x,y};
-      }
-
-      board[y][x]=0;
-    }
-  }
-
-  return null;
-}
-
-/* =========================
-   3連判定
-========================= */
-function isOpenThree(p){
-
-  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]!==p) continue;
-
-      for(const [dx,dy] of dirs){
-
-        let c=1;
-        let open1=false,open2=false;
-
-        let i=1;
-        while(board[y+dy*i]?.[x+dx*i]===p){c++;i++;}
-        if(board[y+dy*i]?.[x+dx*i]===0) open1=true;
-
-        i=1;
-        while(board[y-dy*i]?.[x-dx*i]===p){c++;i++;}
-        if(board[y-dy*i]?.[x-dx*i]===0) open2=true;
-
-        if(c===3 && open1 && open2) return true;
-      }
-    }
-  }
-
-  return false;
 }
 
 /* =========================
