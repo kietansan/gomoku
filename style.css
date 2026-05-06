@@ -10,46 +10,45 @@ body{
   width:420px;
   height:420px;
 
-  margin:20px auto;
+  margin:40px auto; /* ←これが余白 */
 
   background:#d8b56a;
-
-  border:4px solid #3a2a14;
 }
 
-/* 線（固定描画） */
-#board::before{
-  content:"";
-  position:absolute;
-  inset:0;
-
-  background:
-    repeating-linear-gradient(to right,
-      transparent,
-      transparent 32px,
-      rgba(0,0,0,0.4) 32px,
-      rgba(0,0,0,0.4) 33px
-    );
-}
-
+/* 線（12×12） */
+#board::before,
 #board::after{
   content:"";
   position:absolute;
   inset:0;
+}
 
+/* 横線 */
+#board::before{
   background:
-    repeating-linear-gradient(to bottom,
+    repeating-linear-gradient(
+      to right,
       transparent,
       transparent 32px,
-      rgba(0,0,0,0.4) 32px,
-      rgba(0,0,0,0.4) 33px
+      rgba(0,0,0,0.35) 32px,
+      rgba(0,0,0,0.35) 33px
+    );
+}
+
+/* 縦線 */
+#board::after{
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 32px,
+      rgba(0,0,0,0.35) 32px,
+      rgba(0,0,0,0.35) 33px
     );
 }
 
 .point{
   position:absolute;
-  width:0;
-  height:0;
 }
 
 .stone{
