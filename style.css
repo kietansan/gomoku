@@ -14,6 +14,7 @@ body{
 canvas#board{
   display:block;
   margin:30px auto;
+  background:#d8b56a;
   border-radius:6px;
   box-shadow:0 6px 20px rgba(0,0,0,0.25);
 }
