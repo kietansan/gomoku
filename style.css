@@ -1,66 +1,55 @@
-body{
-  text-align:center;
-  font-family:sans-serif;
-}
+function draw(){
 
-#board{
-  position:relative;
-  width:442px;
-  height:442px;
-  margin:20px auto;
-  background:#d8b56a;
-  border-radius:12px;
-  box-shadow:0 10px 20px rgba(0,0,0,0.3);
-}
+  boardEl.innerHTML = "";
 
-/* 線（クリックを邪魔しない） */
-.line{
-  position:absolute;
-  background:#333;
-  pointer-events:none; /* ★重要 */
-}
+  /* 線 */
+  for(let i=0;i<SIZE;i++){
 
-.h-line{
-  height:1px;
-  width:100%;
-}
+    const h=document.createElement("div");
+    h.className="line h-line";
+    h.style.top=(i*CELL+CELL/2)+"px";
+    boardEl.appendChild(h);
 
-.v-line{
-  width:1px;
-  height:100%;
-}
+    const v=document.createElement("div");
+    v.className="line v-line";
+    v.style.left=(i*CELL+CELL/2)+"px";
+    boardEl.appendChild(v);
+  }
 
-/* セル */
-.cell{
-  position:absolute;
-  width:34px;
-  height:34px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
-}
+  /* 交点 */
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
 
-/* 石 */
-.stone{
-  width:26px;
-  height:26px;
-  border-radius:50%;
-}
+      const cell=document.createElement("div");
+      cell.className="cell";
+      cell.style.left=(x*CELL)+"px";
+      cell.style.top=(y*CELL)+"px";
 
-.black{
-  background:radial-gradient(#555,#000);
-}
+      // 星
+      if(isStar(x,y)){
+        const s=document.createElement("div");
+        s.className="star";
+        cell.appendChild(s);
+      }
 
-.white{
-  background:radial-gradient(#fff,#ccc);
-  border:1px solid #999;
-}
+      // 石
+      if(board[y][x]){
+        const s=document.createElement("div");
+        s.className="stone "+(board[y][x]===1?"black":"white");
+        cell.appendChild(s);
+      }
 
-/* 星 */
-.star{
-  width:6px;
-  height:6px;
-  background:#000;
-  border-radius:50%;
+      cell.onclick=()=>{
+        if(gameOver || board[y][x]) return;
+
+        place(x,y,1);
+
+        if(!gameOver){
+          setTimeout(cpuMove,50);
+        }
+      };
+
+      boardEl.appendChild(cell);
+    }
+  }
 }
