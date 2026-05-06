@@ -1,15 +1,11 @@
 body {
   text-align: center;
   font-family: sans-serif;
-  background: #f3e5ab;
 }
 
 #board {
   display: inline-block;
   margin: 20px;
-  background: #deb887;
-  padding: 10px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.3);
 }
 
 .row {
@@ -17,40 +13,23 @@ body {
 }
 
 .cell {
-  width: 36px;
-  height: 36px;
-  border: 1px solid #8b5a2b;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #999;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  position: relative;
 }
 
-/* 黒石 */
-.cell.black::after {
-  content: "";
-  width: 26px;
-  height: 26px;
-  background: radial-gradient(circle at 30% 30%, #666, #000);
+/* 石 */
+.black {
+  background: black;
   border-radius: 50%;
 }
 
-/* 白石 */
-.cell.white::after {
-  content: "";
-  width: 26px;
-  height: 26px;
-  background: radial-gradient(circle at 30% 30%, #fff, #ccc);
+.white {
+  background: white;
   border-radius: 50%;
-}
-
-.cell:hover {
-  background: rgba(0,0,0,0.05);
-}
-
-button {
-  padding: 8px 16px;
-  font-size: 16px;
-  cursor: pointer;
+  border: 2px solid #333;
 }
