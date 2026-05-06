@@ -2,6 +2,7 @@ const SIZE = 15;
 
 let board = [];
 let gameOver = false;
+let cpuTimer = null;
 let lastMove = null;
 
 const boardEl = document.getElementById("board");
@@ -19,6 +20,16 @@ function init(){
   lastMove = null;
   infoEl.textContent = "";
   draw();
+}
+
+/* =========================
+   リセット（重要修正）
+========================= */
+function resetGame(){
+  clearTimeout(cpuTimer);
+  cpuTimer = null;
+  gameOver = false;
+  init();
 }
 
 /* =========================
@@ -63,11 +74,11 @@ function playerMove(x,y){
 
   if(gameOver) return;
 
-  setTimeout(cpuMove, 10);
+  cpuTimer = setTimeout(cpuMove, 80); // 安定化（10msは危険）
 }
 
 /* =========================
-   CPU（5秒思考ハイブリッド）
+   CPUメイン
 ========================= */
 function cpuMove(){
   if(gameOver) return;
@@ -78,25 +89,25 @@ function cpuMove(){
   m = findWin(2);
   if(m) return place(m.x,m.y,2);
 
-  // ★② 即負け防御（最優先）
+  // ★② 即防御
   m = findWin(1);
   if(m) return place(m.x,m.y,2);
 
-  // ★③ 3連・フォーク防御
-  m = findThreatDefense(1);
+  // ★③ 強い脅威防御（3連・4連）
+  m = findThreat(1);
   if(m) return place(m.x,m.y,2);
 
-  // ★④ フォーク攻撃
+  // ★④ フォーク
   m = findFork(2);
   if(m) return place(m.x,m.y,2);
 
-  // ★⑤ 5秒用軽量αβ
-  m = bestMoveLookahead();
+  // ★⑤ 軽量2手読み
+  m = bestMove();
   return place(m.x,m.y,2);
 }
 
 /* =========================
-   即勝ち
+   即勝ち・即防御
 ========================= */
 function findWin(p){
   for(let y=0;y<SIZE;y++){
@@ -118,12 +129,11 @@ function findWin(p){
 }
 
 /* =========================
-   危険防御（3連・フォーク統合）
+   脅威防御（3連以上）
 ========================= */
-function findThreatDefense(p){
-
+function findThreat(p){
   let best=null;
-  let maxThreat=-1;
+  let max=-1;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -132,19 +142,19 @@ function findThreatDefense(p){
 
       board[y][x]=p;
 
-      let threat=0;
+      let t=0;
 
       for(const [dx,dy] of DIRS){
         const {count,open} = line(x,y,dx,dy,p);
 
-        if(count>=4) threat+=100;
-        else if(count===3 && open===2) threat+=10;
+        if(count>=4) t+=100;
+        else if(count===3 && open===2) t+=10;
       }
 
       board[y][x]=0;
 
-      if(threat > maxThreat){
-        maxThreat=threat;
+      if(t>max){
+        max=t;
         best={x,y};
       }
     }
@@ -169,15 +179,12 @@ function findFork(p){
 
       for(const [dx,dy] of DIRS){
         const {count,open} = line(x,y,dx,dy,p);
-
         if(count===3 && open===2) fork++;
       }
 
       board[y][x]=0;
 
-      if(fork>=2){
-        return {x,y};
-      }
+      if(fork>=2) return {x,y};
     }
   }
 
@@ -185,9 +192,9 @@ function findFork(p){
 }
 
 /* =========================
-   軽量2手読み（ここがコア）
+   軽量2手読み
 ========================= */
-function bestMoveLookahead(){
+function bestMove(){
 
   const moves = getMoves().slice(0,6);
 
@@ -198,13 +205,11 @@ function bestMoveLookahead(){
 
     board[m.y][m.x]=2;
 
-    let score =
-      evaluate(2)
-      - opponentResponse(1);
+    let score = evaluate(2) - opponentRisk(1);
 
     board[m.y][m.x]=0;
 
-    if(score > bestScore){
+    if(score>bestScore){
       bestScore=score;
       best=m;
     }
@@ -214,9 +219,9 @@ function bestMoveLookahead(){
 }
 
 /* =========================
-   相手応手評価（1手）
+   相手リスク
 ========================= */
-function opponentResponse(p){
+function opponentRisk(p){
 
   let max=0;
 
@@ -249,7 +254,7 @@ function opponentResponse(p){
 }
 
 /* =========================
-   候補手（圧縮）
+   候補手
 ========================= */
 function getMoves(){
   const moves=[];
@@ -277,12 +282,12 @@ function getMoves(){
 }
 
 /* =========================
-   手評価（軽量）
+   手評価
 ========================= */
 function moveScore(m){
-  let s=0;
-
   board[m.y][m.x]=2;
+
+  let s=0;
 
   for(const [dx,dy] of DIRS){
     const {count}=line(m.x,m.y,dx,dy,2);
@@ -295,7 +300,7 @@ function moveScore(m){
 }
 
 /* =========================
-   評価関数
+   評価
 ========================= */
 function evaluate(p){
   let score=0;
@@ -306,7 +311,7 @@ function evaluate(p){
       if(board[y][x]!==p) continue;
 
       for(const [dx,dy] of DIRS){
-        const {count,open}=line(x,y,dx,dy,p);
+        const {count,open} = line(x,y,dx,dy,p);
 
         if(count>=5) score+=1000000;
         else if(count===4) score+=50000;
@@ -357,7 +362,11 @@ function checkWin(x,y,p){
       }
     }
 
-    if(c>=5) return true;
+    if(c>=5){
+      gameOver=true;
+      infoEl.textContent = (p===2 ? "CPUの勝ち" : "あなたの勝ち");
+      return true;
+    }
   }
 
   return false;
@@ -375,10 +384,7 @@ function place(x,y,p){
   playSound();
   draw();
 
-  if(checkWin(x,y,p)){
-    gameOver=true;
-    infoEl.textContent = (p===2 ? "CPUの勝ち" : "あなたの勝ち");
-  }
+  checkWin(x,y,p);
 }
 
 /* =========================
