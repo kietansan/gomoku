@@ -13,16 +13,14 @@ body {
 }
 
 .cell {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: 1px solid #999;
+  box-sizing: border-box;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-/* 石 */
+/* 石の表示はCSS統一 */
 .black {
   background: black;
   border-radius: 50%;
