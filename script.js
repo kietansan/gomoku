@@ -65,19 +65,27 @@ function playerMove(x,y){
 }
 
 /* =========================
-   CPU（完全強化版）
+   CPUメイン
 ========================= */
 function cpuMove(){
   if(gameOver) return;
 
   const start = performance.now();
-  const TIME_LIMIT = 10000;
+  const LIMIT = 10000;
+
+  /* ★① 即死防御チェック */
+  const defense = findImmediateDefense();
+  if(defense){
+    placeCPU(defense);
+    return;
+  }
 
   let moves = getMovesThreatOrdered();
   if(!moves.length) return;
 
-  let bestMove = moves[0];
+  let best = moves[0];
 
+  /* ★② αβ探索 */
   for(let depth=1; depth<=4; depth++){
 
     let localBest = null;
@@ -94,7 +102,7 @@ function cpuMove(){
         Infinity,
         false,
         start,
-        TIME_LIMIT
+        LIMIT
       );
 
       board[m.y][m.x] = 0;
@@ -104,18 +112,70 @@ function cpuMove(){
         localBest = m;
       }
 
-      if(performance.now() - start > TIME_LIMIT) break;
+      if(performance.now() - start > LIMIT) break;
     }
 
-    if(localBest) bestMove = localBest;
-
-    if(performance.now() - start > TIME_LIMIT) break;
+    if(localBest) best = localBest;
+    if(performance.now() - start > LIMIT) break;
   }
 
-  if(!bestMove) bestMove = {x:7,y:7};
+  placeCPU(best);
+}
 
-  board[bestMove.y][bestMove.x] = 2;
-  finalizeCPU(bestMove);
+/* =========================
+   即死防御（最重要）
+========================= */
+function findImmediateDefense(){
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x] !== 0) continue;
+
+      /* プレイヤー勝ち阻止 */
+      board[y][x] = 1;
+      if(checkWin(x,y,1)){
+        board[y][x] = 0;
+        return {x,y};
+      }
+      board[y][x] = 0;
+
+      /* 4連阻止 */
+      if(isDangerFour(x,y,1)){
+        return {x,y};
+      }
+    }
+  }
+
+  return null;
+}
+
+/* =========================
+   4連判定
+========================= */
+function isDangerFour(x,y,p){
+
+  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+
+  for(const [dx,dy] of dirs){
+
+    let count = 1;
+
+    for(const d of [-1,1]){
+      let nx = x + dx*d;
+      let ny = y + dy*d;
+
+      while(board[ny]?.[nx] === p){
+        count++;
+        nx += dx*d;
+        ny += dy*d;
+      }
+    }
+
+    if(count === 4) return true;
+  }
+
+  return false;
 }
 
 /* =========================
@@ -135,6 +195,7 @@ function minimax(player, depth, alpha, beta, isMax, start, limit){
     let best = -Infinity;
 
     for(const m of moves){
+
       board[m.y][m.x] = player;
 
       if(checkWin(m.x,m.y,player)){
@@ -159,6 +220,7 @@ function minimax(player, depth, alpha, beta, isMax, start, limit){
     let best = Infinity;
 
     for(const m of moves){
+
       board[m.y][m.x] = player;
 
       if(checkWin(m.x,m.y,player)){
@@ -181,7 +243,7 @@ function minimax(player, depth, alpha, beta, isMax, start, limit){
 }
 
 /* =========================
-   評価（核心）
+   評価
 ========================= */
 function evaluateBoard(){
   let score = 0;
@@ -215,17 +277,17 @@ function evaluate(x,y,p){
 }
 
 /* =========================
-   形評価（勝ち構造ベース）
+   形評価（完全修正版）
 ========================= */
 function patternScore(count, open){
 
   if(count >= 5) return 1000000;
 
-  if(count === 4) return 200000;
+  if(count === 4) return 300000;
 
-  if(count === 3 && open === 2) return 80000; // 活三（超重要）
+  if(count === 3 && open === 2) return 120000; // 活三（最重要）
 
-  if(count === 3 && open === 1) return 30000;
+  if(count === 3 && open === 1) return 40000;
 
   if(count === 2 && open === 2) return 5000;
 
@@ -233,28 +295,11 @@ function patternScore(count, open){
 }
 
 /* =========================
-   ダブルスレット検出
-========================= */
-function hasDoubleThreat(x,y,p){
-
-  let threats = 0;
-
-  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
-
-  for(const [dx,dy] of dirs){
-    const {count, openEnds} = getLine(x,y,dx,dy,p);
-    if(count === 3 && openEnds === 2) threats++;
-  }
-
-  return threats >= 2;
-}
-
-/* =========================
-   候補手（脅威＋中央＋優先）
+   候補手（脅威優先）
 ========================= */
 function getMovesThreatOrdered(){
   const moves = [];
-  const center = SIZE/2;
+  const c = SIZE/2;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -271,10 +316,10 @@ function getMovesThreatOrdered(){
         }
       }
 
-      if(hasDoubleThreat(x,y,2)) score += 50000;
-      if(hasDoubleThreat(x,y,1)) score += 60000;
+      if(isDangerFour(x,y,1)) score += 100000;
+      if(isDangerFour(x,y,2)) score += 80000;
 
-      score -= (Math.abs(x-center)+Math.abs(y-center));
+      score -= (Math.abs(x-c)+Math.abs(y-c));
 
       moves.push({x,y,score});
     }
@@ -286,7 +331,7 @@ function getMovesThreatOrdered(){
 }
 
 /* =========================
-   ライン判定
+   ライン
 ========================= */
 function getLine(x,y,dx,dy,p){
   let count=1, open=0;
@@ -327,9 +372,10 @@ function checkWin(x,y,p){
 }
 
 /* =========================
-   終了
+   着手
 ========================= */
-function finalizeCPU(m){
+function placeCPU(m){
+  board[m.y][m.x]=2;
   playSound();
 
   if(checkWin(m.x,m.y,2)){
