@@ -21,35 +21,41 @@ body{
   grid-template-rows:repeat(13, 1fr);
 }
 
-/* ===== 線（復活） ===== */
+/* ===== 線を「固定描画」に変更 ===== */
 .cell{
   position:relative;
   box-sizing:border-box;
-
-  border-right:1px solid rgba(0,0,0,0.35);
-  border-bottom:1px solid rgba(0,0,0,0.35);
 }
 
-/* 右端と下端は消す */
-.cell:nth-child(13n){
-  border-right:none;
-}
-.cell:nth-last-child(-n+13){
-  border-bottom:none;
-}
-
-/* ===== 星（点） ===== */
-.star{
+/* 横線（内側だけ） */
+.cell::after{
+  content:"";
   position:absolute;
-  width:6px;
-  height:6px;
-  background:#111;
-  border-radius:50%;
-  transform:translate(-50%,-50%);
-  z-index:1;
+  top:50%;
+  left:0;
+  width:100%;
+  height:1px;
+  background:rgba(0,0,0,0.45);
+  transform:translateY(-50%);
 }
 
-/* ===== 石 ===== */
+/* 縦線（内側だけ） */
+.cell::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:0;
+  width:1px;
+  height:100%;
+  background:rgba(0,0,0,0.45);
+  transform:translateX(-50%);
+}
+
+/* 外周セルだけ線を消す（重要） */
+.cell:nth-child(-n+13)::before{ display:none; }
+.cell:nth-last-child(-n+13)::after{ display:none; }
+
+/* 石 */
 .stone{
   position:absolute;
   width:70%;
@@ -58,7 +64,6 @@ body{
   left:50%;
   transform:translate(-50%,-50%);
   border-radius:50%;
-  z-index:2;
 }
 
 .black{
