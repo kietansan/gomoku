@@ -7,7 +7,9 @@ const boardEl = document.getElementById("board");
 const infoEl = document.getElementById("info");
 const sound = document.getElementById("sound");
 
-/* 初期化 */
+/* =========================
+   初期化
+========================= */
 function init(){
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
@@ -15,7 +17,7 @@ function init(){
 }
 
 /* =========================
-   描画（安定版：DOM石方式）
+   描画（安定版）
 ========================= */
 function draw(){
   boardEl.innerHTML = "";
@@ -69,7 +71,7 @@ function playerMove(x,y){
 }
 
 /* =========================
-   CPU（10秒αβ・反復深化）
+   CPU（10秒αβ＋安定）
 ========================= */
 function cpuMove(){
   if(gameOver) return;
@@ -205,7 +207,7 @@ function minimax(player, depth, alpha, beta, isMax, startTime, limit){
 }
 
 /* =========================
-   評価
+   評価関数（強化版）
 ========================= */
 function evaluateBoard(){
   let score = 0;
@@ -215,6 +217,7 @@ function evaluateBoard(){
       if(board[y][x] === 0) continue;
 
       const p = board[y][x];
+
       score += evaluate(x,y,p) * (p === 2 ? 1 : -1);
     }
   }
@@ -232,12 +235,14 @@ function evaluate(x,y,p){
   }
 
   const center = SIZE / 2;
-  score -= (Math.abs(x-center) + Math.abs(y-center));
+  score -= (Math.abs(x-center) + Math.abs(y-center)) * 8;
 
   return score;
 }
 
-/* ライン解析 */
+/* =========================
+   ライン解析
+========================= */
 function getLine(x,y,dx,dy,p){
   let count = 1;
   let openEnds = 0;
@@ -267,20 +272,38 @@ function getLine(x,y,dx,dy,p){
   return {count, openEnds};
 }
 
+/* =========================
+   形評価（核心）
+========================= */
 function patternScore(count, openEnds){
+
   if(count >= 4) return 100000;
-  if(count === 3 && openEnds === 2) return 10000;
-  if(count === 3 && openEnds === 1) return 2000;
-  if(count === 2 && openEnds === 2) return 500;
-  if(count === 2) return 100;
+
+  if(count === 3 && openEnds === 2){
+    return 60000; // 活三（最重要）
+  }
+
+  if(count === 3 && openEnds === 1){
+    return 20000;
+  }
+
+  if(count === 2 && openEnds === 2){
+    return 500;
+  }
+
+  if(count === 2){
+    return 100;
+  }
+
   return 0;
 }
 
 /* =========================
-   候補手（完全安定）
+   候補手（中央制御版）
 ========================= */
 function getMovesSafe(){
   const moves = [];
+  const center = SIZE / 2;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -294,7 +317,14 @@ function getMovesSafe(){
         }
       }
 
-      if(near) moves.push({x,y});
+      if(!near) continue;
+
+      const dist = Math.abs(x-center) + Math.abs(y-center);
+
+      // ★端暴走防止
+      if(dist > 12 && moves.length < 25) continue;
+
+      moves.push({x,y});
     }
   }
 
@@ -311,7 +341,9 @@ function getMovesSafe(){
   return moves;
 }
 
-/* 勝利判定 */
+/* =========================
+   勝利判定
+========================= */
 function checkWin(x,y,p){
   const dirs = [[1,0],[0,1],[1,1],[1,-1]];
 
@@ -335,13 +367,17 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* 音 */
+/* =========================
+   音
+========================= */
 function playSound(){
   sound.currentTime = 0;
   sound.play().catch(()=>{});
 }
 
-/* CPU終了 */
+/* =========================
+   終了処理
+========================= */
 function finalizeCPU(m){
   playSound();
 
@@ -355,11 +391,15 @@ function finalizeCPU(m){
   draw();
 }
 
-/* リセット */
+/* =========================
+   リセット
+========================= */
 function resetGame(){
   init();
   infoEl.textContent = "あなたの番です";
 }
 
-/* 起動 */
+/* =========================
+   起動
+========================= */
 init();
