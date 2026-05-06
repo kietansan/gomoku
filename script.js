@@ -29,7 +29,7 @@ window.onload = () => {
 };
 
 /* =========================
-   木目背景（安定版）
+   木目
 ========================= */
 function drawWood(){
 
@@ -62,7 +62,7 @@ function drawWood(){
 }
 
 /* =========================
-   全描画
+   描画
 ========================= */
 function draw(){
 
@@ -110,7 +110,7 @@ function draw(){
 }
 
 /* =========================
-   リアル石
+   石
 ========================= */
 function drawStone(x,y,color){
 
@@ -143,7 +143,7 @@ function drawStone(x,y,color){
 }
 
 /* =========================
-   クリック
+   クリック（人間）
 ========================= */
 document.addEventListener("click",(e)=>{
 
@@ -159,31 +159,189 @@ document.addEventListener("click",(e)=>{
   board[y][x]=1;
 
   draw();
-
   playSound();
+
+  setTimeout(cpuMove, 200);
 });
 
 /* =========================
-   音（完全安定版）
+   音
 ========================= */
 function playSound(){
 
-  if(!audio){
-    console.log("audio未取得");
-    return;
-  }
+  if(!audio) return;
 
   audio.pause();
   audio.currentTime = 0;
 
-  const p = audio.play();
-
-  if(p !== undefined){
-    p.catch(err=>{
-      console.log("音再生失敗:", err);
-    });
-  }
+  audio.play().catch(()=>{});
 }
+
+/* =========================
+   NPC AI（正規化）
+========================= */
+function cpuMove(){
+
+  let move = findWinningMove(2);
+  if(move) return place(move.x,move.y,2);
+
+  move = findWinningMove(1);
+  if(move) return place(move.x,move.y,2);
+
+  move = findOpenThreeBlock();
+  if(move) return place(move.x,move.y,2);
+
+  move = findDoubleThreat(2);
+  if(move) return place(move.x,move.y,2);
+
+  move = findDoubleThreat(1);
+  if(move) return place(move.x,move.y,2);
+
+  const candidates = generateMoves();
+
+  let best = null;
+  let bestScore = -Infinity;
+
+  for(const m of candidates){
+
+    board[m.y][m.x] = 2;
+
+    const score = search(1,3,false);
+
+    board[m.y][m.x] = 0;
+
+    if(score > bestScore){
+      bestScore = score;
+      best = m;
+    }
+  }
+
+  if(best) place(best.x,best.y,2);
+}
+
+/* =========================
+   3手読み
+========================= */
+function search(depth,maxDepth,isHuman){
+
+  if(depth===maxDepth) return evaluate();
+
+  const player = isHuman?1:2;
+  const moves = generateMoves();
+
+  let best = isHuman?Infinity:-Infinity;
+
+  for(const m of moves){
+
+    board[m.y][m.x]=player;
+
+    const val = search(depth+1,maxDepth,!isHuman);
+
+    board[m.y][m.x]=0;
+
+    if(isHuman) best = Math.min(best,val);
+    else best = Math.max(best,val);
+  }
+
+  return best;
+}
+
+/* =========================
+   候補生成
+========================= */
+function generateMoves(){
+
+  const list = [];
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]) continue;
+
+      if(hasNeighbor(x,y)){
+        list.push({x,y});
+      }
+    }
+  }
+
+  return list.length?list:[{x:6,y:6}];
+}
+
+/* =========================
+   近傍
+========================= */
+function hasNeighbor(x,y){
+
+  for(let dy=-2;dy<=2;dy++){
+    for(let dx=-2;dx<=2;dx++){
+
+      if(board[y+dy]?.[x+dx]) return true;
+    }
+  }
+
+  return false;
+}
+
+/* =========================
+   評価
+========================= */
+function evaluate(){
+
+  let score = 0;
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]===2) score++;
+      if(board[y][x]===1) score--;
+    }
+  }
+
+  return score;
+}
+
+/* =========================
+   勝ち手（簡易）
+========================= */
+function findWinningMove(p){
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]) continue;
+
+      board[y][x]=p;
+
+      if(checkWin(x,y,p)){
+        board[y][x]=0;
+        return {x,y};
+      }
+
+      board[y][x]=0;
+    }
+  }
+
+  return null;
+}
+
+/* =========================
+   置く
+========================= */
+function place(x,y,p){
+
+  board[y][x]=p;
+
+  draw();
+
+  if(p===2) playSound();
+}
+
+/* =========================
+   仮（未実装部分ダミー）
+========================= */
+function findOpenThreeBlock(){ return null; }
+function findDoubleThreat(){ return null; }
+function checkWin(){ return false; }
 
 /* リセット */
 window.resetGame = () => {
