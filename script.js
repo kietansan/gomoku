@@ -6,18 +6,18 @@ let gameOver = false;
 
 const canvas = document.getElementById("board");
 const ctx = canvas.getContext("2d");
-
 const infoEl = document.getElementById("info");
 
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
 /* ===== 初期化 ===== */
 function init(){
-  canvas.width = CELL*(SIZE-1);
-  canvas.height = CELL*(SIZE-1);
 
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
+
+  canvas.width = CELL * (SIZE - 1);
+  canvas.height = CELL * (SIZE - 1);
 
   infoEl.textContent = "あなたの番です";
 
@@ -25,7 +25,7 @@ function init(){
 }
 window.resetGame = init;
 
-/* ===== 星（13路標準） ===== */
+/* ===== 星 ===== */
 function isStar(x,y){
   return (
     (x===3&&y===3)||(x===3&&y===9)||
@@ -34,20 +34,21 @@ function isStar(x,y){
   );
 }
 
-/* ===== 描画（完全交点ベース） ===== */
+/* ===== 描画（完全安定） ===== */
 function draw(){
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // 背景（木目っぽい簡易）
-  ctx.fillStyle="#d8b56a";
+  // 木目背景
+  ctx.fillStyle = "#d8b56a";
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  // 縦線・横線（交点基準）
-  ctx.strokeStyle="#333";
-  ctx.lineWidth=1;
+  // 線
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 1;
 
   for(let i=0;i<SIZE;i++){
+
     ctx.beginPath();
     ctx.moveTo(i*CELL,0);
     ctx.lineTo(i*CELL,CELL*(SIZE-1));
@@ -59,26 +60,26 @@ function draw(){
     ctx.stroke();
   }
 
-  // 星（交点に描画）
+  // 星
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(isStar(x,y)){
         ctx.fillStyle="#111";
         ctx.beginPath();
-        ctx.arc(x*CELL,y*CELL,4,0,Math.PI*2);
+        ctx.arc(x*CELL,y*CELL,3,0,Math.PI*2);
         ctx.fill();
       }
     }
   }
 
-  // 石（交点に描画）
+  // 石
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
       if(board[y][x]===0) continue;
 
       ctx.beginPath();
-      ctx.arc(x*CELL,y*CELL,14,0,Math.PI*2);
+      ctx.arc(x*CELL,y*CELL,15,0,Math.PI*2);
 
       if(board[y][x]===1){
         ctx.fillStyle="#000";
@@ -94,15 +95,18 @@ function draw(){
   }
 }
 
-/* ===== クリック（交点スナップ） ===== */
+/* ===== クリック（ズレ完全対策） ===== */
 canvas.onclick = (e)=>{
 
   if(gameOver) return;
 
   const rect = canvas.getBoundingClientRect();
 
-  const x = Math.round((e.clientX-rect.left)/CELL);
-  const y = Math.round((e.clientY-rect.top)/CELL);
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  const x = Math.round(((e.clientX - rect.left) * scaleX) / CELL);
+  const y = Math.round(((e.clientY - rect.top) * scaleY) / CELL);
 
   if(x<0||y<0||x>=SIZE||y>=SIZE) return;
   if(board[y][x]) return;
@@ -117,6 +121,7 @@ canvas.onclick = (e)=>{
 
 /* ===== 着手 ===== */
 function place(x,y,p){
+
   board[y][x]=p;
 
   draw();
@@ -127,13 +132,14 @@ function place(x,y,p){
   }
 }
 
-/* ===== 勝利判定 ===== */
+/* ===== 勝利 ===== */
 function checkWin(x,y,p){
   for(const [dx,dy] of DIRS){
     let c=1;
 
     for(const d of [-1,1]){
       let nx=x+dx*d, ny=y+dy*d;
+
       while(board[ny]?.[nx]===p){
         c++;
         nx+=dx*d;
@@ -189,7 +195,7 @@ function threatCount(x,y,p){
     if(board[ny]?.[nx]===0) o++;
 
     nx=x-dx;ny=y-dy;
-    while(board[ny]?.[nx]===p){c++;nx-=dx;ny-=dy;}
+    while(board[ny]?.[nx]===p){c++;nx-=dx;ny+=dy;}
     if(board[ny]?.[nx]===0) o++;
 
     if(c>=4 || (c===3 && o===2)) t++;
@@ -245,15 +251,16 @@ function getMoves(){
 
       if(!near) continue;
 
-      const score =
-        evalPos(x,y,2)*1.2 +
-        evalPos(x,y,1);
-
-      list.push({x,y,score});
+      list.push({x,y,
+        score:
+          evalPos(x,y,2)*1.2 +
+          evalPos(x,y,1)
+      });
     }
   }
 
   list.sort((a,b)=>b.score-a.score);
+
   return list.slice(0,8);
 }
 
@@ -314,7 +321,6 @@ function cpuMove(){
   const moves=getMoves();
 
   let best=moves[0];
-
   let bestScore=-Infinity;
 
   for(const m of moves){
