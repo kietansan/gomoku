@@ -10,7 +10,7 @@ const sound = document.getElementById("sound");
 
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
-/* ===== 初期化 ===== */
+/* ================= 初期化 ================= */
 function init(){
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
@@ -19,13 +19,13 @@ function init(){
 }
 window.resetGame = init;
 
-/* ===== 音 ===== */
+/* ================= 音 ================= */
 function playSound(){
   sound.currentTime = 0;
   sound.play().catch(()=>{});
 }
 
-/* ===== 星 ===== */
+/* ================= 星 ================= */
 function isStar(x,y){
   return (
     (x===3&&y===3)||(x===3&&y===9)||
@@ -34,7 +34,7 @@ function isStar(x,y){
   );
 }
 
-/* ===== 描画 ===== */
+/* ================= 描画 ================= */
 function draw(){
   boardEl.innerHTML = "";
 
@@ -83,7 +83,7 @@ function draw(){
 
   boardEl.appendChild(grid);
 
-  /* クリック → 最近傍交点 */
+  /* ★クリック（完全一致） */
   grid.onclick = (e)=>{
     if(gameOver) return;
 
@@ -100,31 +100,31 @@ function draw(){
     place(gx,gy,1);
 
     if(!gameOver){
-      infoEl.textContent="CPU思考中...";
-      setTimeout(cpuMove,10);
+      infoEl.textContent = "CPU思考中...";
+      setTimeout(cpuMove, 10);
     }
   };
 }
 
-/* ===== 着手 ===== */
+/* ================= 着手 ================= */
 function place(x,y,p){
-  board[y][x]=p;
+  board[y][x] = p;
   playSound();
   draw();
 
   if(checkWin(x,y,p)){
-    gameOver=true;
-    infoEl.textContent = p===1?"あなたの勝ち":"CPUの勝ち";
+    gameOver = true;
+    infoEl.textContent = p===1 ? "あなたの勝ち" : "CPUの勝ち";
     return;
   }
 
-  // ★ここが重要（表示更新）
+  // ★表示修正（ここ重要）
   if(p===2){
     infoEl.textContent = "あなたの番です";
   }
 }
 
-/* ===== 勝利判定 ===== */
+/* ================= 勝利判定 ================= */
 function checkWin(x,y,p){
   for(const [dx,dy] of DIRS){
     let c=1;
@@ -139,17 +139,28 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* ===== CPU（4手読み） ===== */
+/* ================= CPU（3秒制限・反復深化） ================= */
 function cpuMove(){
-  const result = minimax(4, true, -Infinity, Infinity);
-  if(result.move){
-    place(result.move.x, result.move.y, 2);
+  const timeLimit = performance.now() + 3000;
+
+  let bestMove = null;
+
+  for(let depth=1; depth<=4; depth++){
+    const result = minimax(depth, true, -Infinity, Infinity, timeLimit);
+
+    if(performance.now() > timeLimit) break;
+    if(result.move) bestMove = result.move;
+  }
+
+  if(bestMove){
+    place(bestMove.x, bestMove.y, 2);
   }
 }
 
-/* ===== 候補手（近傍のみ） ===== */
+/* ================= 候補手 ================= */
 function getMoves(){
   const moves = [];
+
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
@@ -169,12 +180,16 @@ function getMoves(){
     }
   }
 
-  // 初手対策
   return moves.length ? moves : [{x:6,y:6}];
 }
 
-/* ===== ミニマックス ===== */
-function minimax(depth, isMax, alpha, beta){
+/* ================= ミニマックス ================= */
+function minimax(depth, isMax, alpha, beta, timeLimit){
+
+  if(performance.now() > timeLimit){
+    return {score:evaluate()};
+  }
+
   if(depth===0){
     return {score:evaluate()};
   }
@@ -193,7 +208,7 @@ function minimax(depth, isMax, alpha, beta){
         return {score:100000, move:m};
       }
 
-      const evalResult = minimax(depth-1,false,alpha,beta).score;
+      const evalResult = minimax(depth-1,false,alpha,beta,timeLimit).score;
       board[m.y][m.x] = 0;
 
       if(evalResult > maxEval){
@@ -218,7 +233,7 @@ function minimax(depth, isMax, alpha, beta){
         return {score:-100000, move:m};
       }
 
-      const evalResult = minimax(depth-1,true,alpha,beta).score;
+      const evalResult = minimax(depth-1,true,alpha,beta,timeLimit).score;
       board[m.y][m.x] = 0;
 
       if(evalResult < minEval){
@@ -234,7 +249,7 @@ function minimax(depth, isMax, alpha, beta){
   }
 }
 
-/* ===== 評価関数 ===== */
+/* ================= 評価関数 ================= */
 function evaluate(){
   let score = 0;
 
