@@ -4,7 +4,7 @@ body{
   background:#f5f5f5;
 }
 
-/* ===== 盤面全体 ===== */
+/* ===== 盤面 ===== */
 #board{
   position:relative;
   width:442px;
@@ -15,18 +15,67 @@ body{
   box-shadow:0 4px 12px rgba(0,0,0,0.2);
 }
 
-/* ===== 交点クリック領域 ===== */
+/* ===== 縦線 ===== */
+#board::before{
+  content:"";
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:
+    repeating-linear-gradient(
+      to right,
+      transparent,
+      transparent 33px,
+      rgba(0,0,0,0.4) 33px,
+      rgba(0,0,0,0.4) 34px
+    );
+  pointer-events:none;
+}
+
+/* ===== 横線 ===== */
+#board::after{
+  content:"";
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 33px,
+      rgba(0,0,0,0.4) 33px,
+      rgba(0,0,0,0.4) 34px
+    );
+  pointer-events:none;
+}
+
+/* ===== 交点クリック ===== */
 .cell{
   position:absolute;
   width:34px;
   height:34px;
-  cursor:pointer;
+  cursor:crosshair; /* ★改善 */
   box-sizing:border-box;
 }
 
-/* hoverで分かりやすく（任意） */
+/* hover補助 */
 .cell:hover{
-  background:rgba(0,0,0,0.08);
+  background:rgba(0,0,0,0.06);
+}
+
+/* ===== 星（天元・星） ===== */
+.star{
+  position:absolute;
+  width:6px;
+  height:6px;
+  background:#111;
+  border-radius:50%;
+  transform:translate(-50%,-50%);
+  z-index:1;
 }
 
 /* ===== 石 ===== */
@@ -39,27 +88,25 @@ body{
   left:50%;
   transform:translate(-50%,-50%);
   box-shadow:0 2px 4px rgba(0,0,0,0.4);
+  z-index:2;
 }
 
-/* 黒石 */
 .black{
   background: radial-gradient(circle at 30% 30%, #444, #000);
 }
 
-/* 白石 */
 .white{
   background: radial-gradient(circle at 30% 30%, #fff, #ddd);
   border:1px solid #111;
 }
 
-/* ===== 情報表示 ===== */
+/* ===== UI ===== */
 #info{
   margin-top:10px;
   font-size:18px;
   font-weight:bold;
 }
 
-/* ===== ボタン ===== */
 button{
   margin-top:10px;
   padding:8px 16px;
