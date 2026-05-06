@@ -1,4 +1,4 @@
-const SIZE = 19;
+const SIZE = 13;
 
 let board = [];
 let gameOver = false;
@@ -26,11 +26,16 @@ function resetGame(){
 window.resetGame = resetGame;
 
 /* =========================
-   星（19路標準）
+   星（13路）
 ========================= */
 function isStar(x,y){
-  const s = [3,9,15];
-  return s.includes(x) && s.includes(y);
+  const stars = [
+    [3,3],[3,9],
+    [9,3],[9,9],
+    [6,6]
+  ];
+
+  return stars.some(([sx,sy]) => sx===x && sy===y);
 }
 
 /* =========================
@@ -41,15 +46,15 @@ function draw(){
 
   for(let y=0;y<SIZE;y++){
     const row = document.createElement("div");
-    row.className = "row19";
+    row.className = "row13";
 
     for(let x=0;x<SIZE;x++){
 
       const node = document.createElement("div");
-      node.className = "node19";
+      node.className = "node13";
 
       if(isStar(x,y)){
-        node.classList.add("star19");
+        node.classList.add("star13");
       }
 
       if(board[y][x] === 1){
