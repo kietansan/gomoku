@@ -5,6 +5,7 @@ const MARGIN = 40;
 let board = [];
 let canvas, ctx;
 let gameOver = false;
+let turn = 1; // 1=人間 2=CPU
 let audio;
 
 const HOSHI = [
@@ -91,11 +92,12 @@ function drawStone(x,y,p){
 }
 
 /* =========================
-   入力
+   入力（ターン制）
 ========================= */
 document.addEventListener("click",(e)=>{
 
   if(gameOver) return;
+  if(turn !== 1) return; // ★ここ重要
 
   const rect = canvas.getBoundingClientRect();
 
@@ -116,6 +118,7 @@ document.addEventListener("click",(e)=>{
     return;
   }
 
+  turn = 2;
   setInfo("CPU思考中...");
   setTimeout(cpuMove,50);
 });
@@ -127,28 +130,30 @@ function cpuMove(){
 
   if(gameOver) return;
 
+  let move;
+
   // ① 即勝ち
-  let move = findWin(2);
+  move = findWin(2);
   if(move) return place(move,2);
 
   // ② 即負け防御
   move = findWin(1);
   if(move) return place(move,2);
 
-  // ③ ★3連防御（復活：両端なし対応）
+  // ③ 3連防御（両端なし対応）
   move = findOpenThreeBlock(1);
   if(move) return place(move,2);
 
-  // ④ ランダム（軽量）
+  // ④ ランダム
   move = randomMove();
   place(move,2);
 
+  turn = 1;
   setInfo("あなたの番です");
 }
 
 /* =========================
-   ★3連検出＆防御（本体）
-   ●●●・ / ・●●●・ を検出
+   3連検出（復活版）
 ========================= */
 function findOpenThree(player){
 
@@ -162,25 +167,22 @@ function findOpenThree(player){
       for(const [dx,dy] of dirs){
 
         let count = 1;
-        let openEnds = 0;
+        let open = 0;
 
-        // 正方向
         let i=1;
         while(board[y+dy*i]?.[x+dx*i]===player){
           count++; i++;
         }
-        if(board[y+dy*i]?.[x+dx*i]===0) openEnds++;
+        if(board[y+dy*i]?.[x+dx*i]===0) open++;
 
-        // 逆方向
         i=1;
         while(board[y-dy*i]?.[x-dx*i]===player){
           count++; i++;
         }
-        if(board[y-dy*i]?.[x-dx*i]===0) openEnds++;
+        if(board[y-dy*i]?.[x-dx*i]===0) open++;
 
-        // ★3連＋片側以上空き（両端なし含む）
-        if(count===3 && openEnds>=1){
-          return findBlockAtLine(x,y,dx,dy);
+        if(count===3 && open>=1){
+          return findBlock(x,y,dx,dy);
         }
       }
     }
@@ -189,15 +191,12 @@ function findOpenThree(player){
   return null;
 }
 
-/* =========================
-   そのライン上の防御手を探す
-========================= */
-function findBlockAtLine(x,y,dx,dy){
+/* 防御手取得 */
+function findBlock(x,y,dx,dy){
 
   for(let i=-3;i<=3;i++){
-
-    const nx = x + dx*i;
-    const ny = y + dy*i;
+    const nx=x+dx*i;
+    const ny=y+dy*i;
 
     if(board[ny]?.[nx]===0){
       return {x:nx,y:ny};
@@ -316,6 +315,7 @@ window.resetGame=()=>{
 
   board=Array.from({length:SIZE},()=>Array(SIZE).fill(0));
   gameOver=false;
+  turn=1;
 
   setInfo("あなたの番です");
   draw();
