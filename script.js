@@ -1,78 +1,89 @@
 const SIZE = 13;   // 交点
-const GRID = 12;   // マス
+const GRID = 12;   // 盤マス
 const CELL = 40;
+
+const MARGIN = 40; // ★これが余白
 
 let board = [];
 
-let canvas, ctx, info;
+let canvas, ctx;
 
-/* ===== 初期化（超重要：DOM待ち） ===== */
+/* 初期化 */
 window.onload = () => {
 
   canvas = document.getElementById("board");
   ctx = canvas.getContext("2d");
-  info = document.getElementById("info");
 
-  canvas.width = GRID * CELL;
-  canvas.height = GRID * CELL;
+  // ★余白込みサイズ
+  canvas.width = GRID * CELL + MARGIN * 2;
+  canvas.height = GRID * CELL + MARGIN * 2;
 
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
 
   draw();
 };
 
-/* ===== 描画（最小安定版） ===== */
+/* 描画 */
 function draw(){
 
-  // 背景
-  ctx.fillStyle = "#d8b56a";
+  // ======================
+  // ① 外側余白（木）
+  // ======================
+  ctx.fillStyle = "#caa46a";
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  // 線
+  // ======================
+  // ② 内側盤（12×12）
+  // ======================
+  ctx.fillStyle = "#d8b56a";
+  ctx.fillRect(MARGIN,MARGIN,GRID*CELL,GRID*CELL);
+
+  // ======================
+  // ③ 線（盤の中だけ）
+  // ======================
   ctx.strokeStyle = "#333";
-  ctx.lineWidth = 1;
 
   for(let i=0;i<SIZE;i++){
 
+    // 縦
     ctx.beginPath();
-    ctx.moveTo(i*CELL,0);
-    ctx.lineTo(i*CELL,canvas.height);
+    ctx.moveTo(MARGIN + i*CELL, MARGIN);
+    ctx.lineTo(MARGIN + i*CELL, MARGIN + GRID*CELL);
     ctx.stroke();
 
+    // 横
     ctx.beginPath();
-    ctx.moveTo(0,i*CELL);
-    ctx.lineTo(canvas.width,i*CELL);
+    ctx.moveTo(MARGIN, MARGIN + i*CELL);
+    ctx.lineTo(MARGIN + GRID*CELL, MARGIN + i*CELL);
     ctx.stroke();
   }
 }
 
-/* ===== クリック（必ず動く版） ===== */
+/* クリック */
 document.addEventListener("click",(e)=>{
-
-  if(!canvas) return;
 
   const rect = canvas.getBoundingClientRect();
 
-  const x = Math.round((e.clientX-rect.left)/CELL);
-  const y = Math.round((e.clientY-rect.top)/CELL);
+  const x = Math.round((e.clientX - rect.left - MARGIN) / CELL);
+  const y = Math.round((e.clientY - rect.top - MARGIN) / CELL);
 
   if(x<0||y<0||x>=SIZE||y>=SIZE) return;
 
   board[y][x]=1;
+
   drawStone(x,y);
 });
 
-/* ===== 石描画 ===== */
+/* 石 */
 function drawStone(x,y){
 
   ctx.beginPath();
-  ctx.arc(x*CELL,y*CELL,14,0,Math.PI*2);
+  ctx.arc(
+    MARGIN + x*CELL,
+    MARGIN + y*CELL,
+    14,0,Math.PI*2
+  );
+
   ctx.fillStyle="#000";
   ctx.fill();
-}
-
-/* ===== リセット ===== */
-function resetGame(){
-  board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
-  draw();
 }
