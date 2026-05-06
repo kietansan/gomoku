@@ -61,7 +61,7 @@ function cpuMove(){
 
   const moves = getMoves();
 
-  // 1. CPU勝利チェック
+  // ① CPU即勝ち
   for(const m of moves){
     board[m.y][m.x] = 2;
     if(checkWin(m.x, m.y, 2)){
@@ -71,7 +71,7 @@ function cpuMove(){
     board[m.y][m.x] = 0;
   }
 
-  // 2. プレイヤーの勝ち阻止
+  // ② プレイヤー即死防止（4連・3連ブロック）
   for(const m of moves){
     board[m.y][m.x] = 1;
     if(checkWin(m.x, m.y, 1)){
@@ -83,7 +83,7 @@ function cpuMove(){
     board[m.y][m.x] = 0;
   }
 
-  // 3. 評価して最善手
+  // ③ 評価最大手
   let best = null;
   let bestScore = -Infinity;
 
@@ -103,7 +103,7 @@ function cpuMove(){
 function finalizeCPU(m){
   playSound();
 
-  if(checkWin(m.x, m.y, 2)){
+  if(checkWin(m.x,m.y,2)){
     infoEl.textContent = "CPUの勝ち";
     gameOver = true;
   } else {
@@ -137,10 +137,9 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* 候補手生成（近傍だけ） */
+/* 候補手生成（近傍のみ） */
 function getMoves(){
   const moves = [];
-  const center = SIZE / 2;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -154,42 +153,69 @@ function getMoves(){
         }
       }
 
-      if(!near) continue;
-
-      moves.push({x,y});
+      if(near) moves.push({x,y});
     }
   }
 
   return moves.length ? moves : [{x:7,y:7}];
 }
 
-/* 評価関数（強化AIの核） */
+/* 評価関数（3連・4連対応） */
 function evaluate(x,y,p){
-  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
   let score = 0;
+  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
 
   for(const [dx,dy] of dirs){
-    let count = 0;
-
-    for(const d of [-1,1]){
-      let nx = x + dx*d;
-      let ny = y + dy*d;
-
-      while(board[ny]?.[nx] === p){
-        count++;
-        nx += dx*d;
-        ny += dy*d;
-      }
-    }
-
-    score += count * count * 10;
+    const {count, openEnds} = getLine(x,y,dx,dy,p);
+    score += patternScore(count, openEnds);
   }
 
-  // 中央ボーナス
+  // 中央ボーナス（弱め）
   const center = SIZE / 2;
-  score -= (Math.abs(x-center) + Math.abs(y-center)) * 2;
+  score -= (Math.abs(x-center) + Math.abs(y-center));
 
   return score;
+}
+
+/* ライン解析 */
+function getLine(x,y,dx,dy,p){
+  let count = 1;
+  let openEnds = 0;
+
+  const check = (nx,ny)=> board[ny]?.[nx] === p;
+
+  // 正方向
+  let nx = x + dx;
+  let ny = y + dy;
+  while(check(nx,ny)){
+    count++;
+    nx += dx;
+    ny += dy;
+  }
+  if(board[ny]?.[nx] === 0) openEnds++;
+
+  // 逆方向
+  nx = x - dx;
+  ny = y - dy;
+  while(check(nx,ny)){
+    count++;
+    nx -= dx;
+    ny -= dy;
+  }
+  if(board[ny]?.[nx] === 0) openEnds++;
+
+  return {count, openEnds};
+}
+
+/* 形評価 */
+function patternScore(count, openEnds){
+  if(count >= 4) return 100000;              // 即死
+  if(count === 3 && openEnds === 2) return 10000; // 活三
+  if(count === 3 && openEnds === 1) return 2000;  // 死三
+  if(count === 2 && openEnds === 2) return 500;    // 活二
+  if(count === 2) return 100;
+
+  return 0;
 }
 
 /* 音 */
