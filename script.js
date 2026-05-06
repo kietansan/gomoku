@@ -40,14 +40,11 @@ window.onload = () => {
 };
 
 /* =========================
-   エラー表示（強制停止）
+   エラー表示
 ========================= */
 function showError(msg){
 
   document.getElementById("info").innerText = "エラー: " + msg;
-
-  canvas = document.getElementById("board");
-  ctx = canvas.getContext("2d");
 
   ctx.fillStyle = "#300";
   ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -86,7 +83,7 @@ function onClickBoard(e){
 }
 
 /* =========================
-   CPUターン（必須）
+   CPUターン（分離構造）
 ========================= */
 function cpuTurn(){
 
@@ -95,7 +92,18 @@ function cpuTurn(){
 
   setTimeout(() => {
 
-    cpuMove(); // ★必須（存在保証済み）
+    // ★CPUは「座標だけ返す」
+    const move = cpuMove(board);
+
+    if(!move){
+      showError("CPUの手が取得できません");
+      return;
+    }
+
+    board[move.y][move.x] = 2;
+
+    draw();
+    playSound();
 
     if(checkWin(2)){
       endGame("CPUの勝ち！");
@@ -109,7 +117,7 @@ function cpuTurn(){
 }
 
 /* =========================
-   勝利判定
+   勝敗判定
 ========================= */
 function checkWin(player){
 
@@ -125,6 +133,7 @@ function checkWin(player){
         let count = 1;
 
         for(let i=1;i<5;i++){
+
           const nx = x + dx*i;
           const ny = y + dy*i;
 
@@ -143,7 +152,7 @@ function checkWin(player){
 }
 
 /* =========================
-   終了
+   終了処理
 ========================= */
 function endGame(text){
 
@@ -190,7 +199,7 @@ function draw(){
 }
 
 /* =========================
-   石
+   石描画
 ========================= */
 function drawStone(x,y,color){
 
