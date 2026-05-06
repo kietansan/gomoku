@@ -1,91 +1,72 @@
 body{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  background:#e8d3a8;
+  text-align:center;
   font-family:sans-serif;
 }
 
+/* 盤 */
 #board{
-  margin-top:20px;
-  padding:18px;
-  background:
-    linear-gradient(135deg,#d8b56a,#caa25c),
-    repeating-linear-gradient(
-      90deg,
-      rgba(0,0,0,0.04) 0px,
-      rgba(0,0,0,0.04) 2px,
-      transparent 2px,
-      transparent 14px
-    );
-  box-shadow:0 10px 25px rgba(0,0,0,0.4);
-}
-
-.grid{
   position:relative;
-  display:grid;
-  grid-template-columns:repeat(13,34px);
-  grid-template-rows:repeat(13,34px);
+  width:442px;   /* 13×34 */
+  height:442px;
+  margin:20px auto;
+  background:
+    repeating-linear-gradient(90deg,#d8b56a,#d8b56a 8px,#d2aa5a 8px,#d2aa5a 16px),
+    repeating-linear-gradient(0deg,#d8b56a,#d8b56a 8px,#d2aa5a 8px,#d2aa5a 16px);
+  border-radius:12px;
+  box-shadow:0 10px 25px rgba(0,0,0,0.3);
 }
 
-/* 線レイヤー */
-.lines{
+/* 線 */
+.line{
   position:absolute;
-  inset:0;
-  pointer-events:none;
+  background:#333;
 }
 
 .h-line{
-  position:absolute;
-  left:17px;
-  right:17px;
   height:1px;
-  background:#2b1a10;
+  width:100%;
 }
 
 .v-line{
-  position:absolute;
-  top:17px;
-  bottom:17px;
   width:1px;
-  background:#2b1a10;
+  height:100%;
 }
 
-/* 交点 */
-.node{
+/* 交点クリック領域 */
+.cell{
+  position:absolute;  /* ★これが最重要 */
   width:34px;
   height:34px;
-  position:relative;
-}
-
-/* 星 */
-.star{
-  width:6px;
-  height:6px;
-  background:#2b1a10;
-  border-radius:50%;
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
 }
 
 /* 石 */
 .stone{
-  width:24px;
-  height:24px;
+  width:26px;
+  height:26px;
   border-radius:50%;
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
 }
 
 .black{
-  background:radial-gradient(circle at 30% 30%,#555,#000);
+  background:radial-gradient(circle at 30% 30%,#666,#000);
 }
 
 .white{
-  background:radial-gradient(circle at 30% 30%,#fff,#ddd);
+  background:radial-gradient(circle at 30% 30%,#fff,#ccc);
   border:1px solid #999;
+}
+
+/* 星 */
+.star{
+  position:absolute;
+  width:6px;
+  height:6px;
+  background:#000;
+  border-radius:50%;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
 }
