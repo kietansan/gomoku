@@ -9,7 +9,7 @@ let audio;
 
 const WOOD = "#d8b56a";
 
-/* 星（13路） */
+/* 星 */
 const HOSHI = [
   [3,3],[3,9],
   [9,3],[9,9],
@@ -22,13 +22,47 @@ window.onload = () => {
   ctx = canvas.getContext("2d");
   audio = document.getElementById("putSound");
 
+  if(!canvas){
+    console.log("canvasが取得できていない");
+    return;
+  }
+
   canvas.width = GRID * CELL + MARGIN * 2;
   canvas.height = GRID * CELL + MARGIN * 2;
 
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
 
   draw();
+
+  // ★②③修正：canvas限定クリック
+  canvas.addEventListener("click", onClickBoard);
 };
+
+/* ■ クリック処理（分離） */
+function onClickBoard(e){
+
+  const rect = canvas.getBoundingClientRect();
+
+  // ★②修正：座標を安定化（floor + 中心補正）
+  const x = Math.floor((e.clientX - rect.left - MARGIN + CELL/2) / CELL);
+  const y = Math.floor((e.clientY - rect.top - MARGIN + CELL/2) / CELL);
+
+  // 範囲外
+  if(x < 0 || y < 0 || x >= SIZE || y >= SIZE) return;
+
+  // 既に置いてある
+  if(board[y][x]) return;
+
+  board[y][x] = 1;
+
+  draw();
+  playSound();
+
+  // CPU（ある場合）
+  if(typeof cpuMove === "function"){
+    cpuMove();
+  }
+}
 
 /* ■ 描画 */
 function draw(){
@@ -52,28 +86,27 @@ function draw(){
     ctx.stroke();
   }
 
+  // 星
   for(const [x,y] of HOSHI){
-
     ctx.beginPath();
     ctx.arc(
       MARGIN + x*CELL,
       MARGIN + y*CELL,
       3,0,Math.PI*2
     );
-
     ctx.fillStyle="#222";
     ctx.fill();
   }
 
+  // 石
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-      if(!board[y][x]) continue;
-      drawStone(x,y,board[y][x]);
+      if(board[y][x]) drawStone(x,y,board[y][x]);
     }
   }
 }
 
-/* ■ 石描画 */
+/* ■ 石 */
 function drawStone(x,y,color){
 
   const cx = MARGIN + x*CELL;
@@ -96,7 +129,6 @@ function drawStone(x,y,color){
 
   ctx.beginPath();
   ctx.arc(cx,cy,14,0,Math.PI*2);
-
   ctx.fillStyle = grad;
   ctx.fill();
 
@@ -104,33 +136,16 @@ function drawStone(x,y,color){
   ctx.stroke();
 }
 
-/* ■ クリック */
-canvas.addEventListener("click",(e)=>{
-
-  const rect = canvas.getBoundingClientRect();
-
-  const x = Math.floor((e.clientX - rect.left - MARGIN + CELL/2) / CELL);
-  const y = Math.floor((e.clientY - rect.top - MARGIN + CELL/2) / CELL);
-
-  if(x<0||y<0||x>=SIZE||y>=SIZE) return;
-  if(board[y][x]) return;
-
-  board[y][x] = 1;
-
-  draw();
-  playSound();
-
-  // CPUターン（今は即手番）
-  cpuMove();
-});
-
 /* ■ 音 */
 function playSound(){
 
   if(!audio) return;
 
   audio.currentTime = 0;
-  audio.play().catch(()=>{});
+
+  audio.play().catch(err=>{
+    console.log("音エラー:", err);
+  });
 }
 
 /* ■ リセット */
