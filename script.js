@@ -42,17 +42,17 @@ function draw(){
   const lines = document.createElement("div");
   lines.className = "lines";
 
-  /* ★交点中央に線を置く（これが最重要） */
+  /* ★線＝交点中央 */
   for(let i=0;i<SIZE;i++){
 
     const h=document.createElement("div");
     h.className="h-line";
-    h.style.top = (i*CELL + CELL/2)+"px";
+    h.style.top = (i*CELL + CELL/2) + "px";
     lines.appendChild(h);
 
     const v=document.createElement("div");
     v.className="v-line";
-    v.style.left = (i*CELL + CELL/2)+"px";
+    v.style.left = (i*CELL + CELL/2) + "px";
     lines.appendChild(v);
   }
 
@@ -102,7 +102,7 @@ function draw(){
   boardEl.appendChild(grid);
 }
 
-/* CPU（簡易） */
+/* CPU */
 function cpuMove(){
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
