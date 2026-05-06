@@ -30,14 +30,12 @@ window.onload = () => {
   draw();
 };
 
-/* ■ 全描画 */
+/* ■ 描画 */
 function draw(){
 
-  // 背景（完全フラット木）
   ctx.fillStyle = WOOD;
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  // 線
   ctx.strokeStyle = "#333";
   ctx.lineWidth = 1;
 
@@ -54,7 +52,6 @@ function draw(){
     ctx.stroke();
   }
 
-  // 星（5点）
   for(const [x,y] of HOSHI){
 
     ctx.beginPath();
@@ -68,18 +65,15 @@ function draw(){
     ctx.fill();
   }
 
-  // 石
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-
       if(!board[y][x]) continue;
-
       drawStone(x,y,board[y][x]);
     }
   }
 }
 
-/* ■ リアル石 */
+/* ■ 石描画 */
 function drawStone(x,y,color){
 
   const cx = MARGIN + x*CELL;
@@ -111,22 +105,23 @@ function drawStone(x,y,color){
 }
 
 /* ■ クリック */
-document.addEventListener("click",(e)=>{
+canvas.addEventListener("click",(e)=>{
 
   const rect = canvas.getBoundingClientRect();
 
-  const x = Math.round((e.clientX - rect.left - MARGIN) / CELL);
-  const y = Math.round((e.clientY - rect.top - MARGIN) / CELL);
+  const x = Math.floor((e.clientX - rect.left - MARGIN + CELL/2) / CELL);
+  const y = Math.floor((e.clientY - rect.top - MARGIN + CELL/2) / CELL);
 
   if(x<0||y<0||x>=SIZE||y>=SIZE) return;
-
   if(board[y][x]) return;
 
-  board[y][x]=1;
+  board[y][x] = 1;
 
   draw();
-
   playSound();
+
+  // CPUターン（今は即手番）
+  cpuMove();
 });
 
 /* ■ 音 */
@@ -135,10 +130,7 @@ function playSound(){
   if(!audio) return;
 
   audio.currentTime = 0;
-
-  audio.play().catch(err=>{
-    console.log("音再生失敗:", err);
-  });
+  audio.play().catch(()=>{});
 }
 
 /* ■ リセット */
