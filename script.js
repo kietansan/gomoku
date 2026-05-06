@@ -5,8 +5,12 @@ const MARGIN = 40;
 let board = [];
 let canvas, ctx;
 let gameOver = false;
-let turn = 1; // 1=人間 2=CPU
+let turn = 1;
 let audio;
+
+let cpuCandidates = [];
+let cpuIndex = 0;
+let cpuPhase = 0; // 0=即勝ち,1=防御,2=ランダム
 
 const HOSHI = [
   [3,3],[3,9],
@@ -121,58 +125,97 @@ document.addEventListener("click",(e)=>{
   turn = 2;
   setInfo("CPU思考中...");
 
-  setTimeout(cpuMove, 10); // ★超軽量
+  cpuPhase = 0;
+  cpuIndex = 0;
+
+  setTimeout(cpuStep, 5);
 });
 
 /* =========================
-   CPU（軽量・安定版）
+   ★CPU分割処理（ここが核心）
 ========================= */
-function cpuMove(){
+function cpuStep(){
 
   if(gameOver) return;
 
-  let move;
+  // 候補が空なら作る
+  if(cpuCandidates.length === 0){
 
-  // ① 即勝ち（周囲だけ）
-  move = findWinFast(2);
-  if(move) return place(move,2);
+    cpuCandidates = getCandidates();
 
-  // ② 即防御（周囲だけ）
-  move = findWinFast(1);
-  if(move) return place(move,2);
-
-  // ③ 軽量ランダム
-  move = randomMove();
-  place(move,2);
-
-  turn = 1;
-  setInfo("あなたの番です");
-}
-
-/* =========================
-   ★高速版勝ちチェック（周囲限定）
-========================= */
-function findWinFast(p){
-
-  const candidates = getCandidates();
-
-  for(const pos of candidates){
-
-    board[pos.y][pos.x]=p;
-
-    if(checkWin(pos.x,pos.y,p)){
-      board[pos.y][pos.x]=0;
-      return pos;
+    // フェーズごとに切り替え
+    if(cpuPhase === 0){
+      cpuCandidates = shuffle(cpuCandidates);
     }
-
-    board[pos.y][pos.x]=0;
   }
 
-  return null;
+  // 1フレームで数手だけ処理（重要）
+  for(let i=0;i<5;i++){
+
+    if(cpuIndex >= cpuCandidates.length){
+
+      cpuIndex = 0;
+
+      if(cpuPhase === 0){
+        cpuPhase = 1; // 防御へ
+        cpuCandidates = [];
+        setTimeout(cpuStep,5);
+        return;
+      }
+
+      if(cpuPhase === 1){
+        cpuPhase = 2; // ランダムへ
+        cpuCandidates = [];
+        setTimeout(cpuStep,5);
+        return;
+      }
+
+      // 完了
+      turn = 1;
+      setInfo("あなたの番です");
+      cpuCandidates = [];
+      return;
+    }
+
+    const pos = cpuCandidates[cpuIndex++];
+    const x = pos.x;
+    const y = pos.y;
+
+    if(board[y][x]) continue;
+
+    // ①即勝ち
+    if(cpuPhase === 0){
+      board[y][x]=2;
+      if(checkWin(x,y,2)){
+        finishCPU(x,y);
+        return;
+      }
+      board[y][x]=0;
+    }
+
+    // ②即防御
+    if(cpuPhase === 1){
+      board[y][x]=1;
+      if(checkWin(x,y,1)){
+        board[y][x]=2;
+        finishCPU(x,y);
+        return;
+      }
+      board[y][x]=0;
+    }
+
+    // ③ランダム
+    if(cpuPhase === 2){
+      place({x,y},2);
+      return;
+    }
+  }
+
+  setTimeout(cpuStep, 1);
 }
 
 /* =========================
-   候補生成（周囲だけ）
+   候補生成（超制限）
 ========================= */
 function getCandidates(){
 
@@ -183,8 +226,15 @@ function getCandidates(){
 
       if(board[y][x]) continue;
 
-      if(hasNeighbor(x,y)){
-        list.push({x,y});
+      if(hasNeighbor(x,y)) list.push({x,y});
+    }
+  }
+
+  // 少なすぎる場合は全体少し補完
+  if(list.length < 3){
+    for(let y=0;y<SIZE;y++){
+      for(let x=0;x<SIZE;x++){
+        if(!board[y][x]) list.push({x,y});
       }
     }
   }
@@ -193,13 +243,12 @@ function getCandidates(){
 }
 
 /* =========================
-   近傍チェック（軽量の核）
+   近傍判定
 ========================= */
 function hasNeighbor(x,y){
 
   for(let dy=-1;dy<=1;dy++){
     for(let dx=-1;dx<=1;dx++){
-
       if(board[y+dy]?.[x+dx]) return true;
     }
   }
@@ -208,13 +257,29 @@ function hasNeighbor(x,y){
 }
 
 /* =========================
-   ランダム
+   決着処理
 ========================= */
-function randomMove(){
+function finishCPU(x,y){
 
-  const list = getCandidates();
+  board[y][x]=2;
+  draw();
 
-  return list[Math.floor(Math.random()*list.length)];
+  gameOver=true;
+  setInfo("CPUの勝ち！");
+}
+
+/* =========================
+   通常配置
+========================= */
+function place(pos,p){
+
+  board[pos.y][pos.x]=p;
+  draw();
+
+  if(checkWin(pos.x,pos.y,p)){
+    gameOver=true;
+    setInfo(p===1?"あなたの勝ち！":"CPUの勝ち！");
+  }
 }
 
 /* =========================
@@ -245,20 +310,6 @@ function checkWin(x,y,p){
 }
 
 /* =========================
-   置く
-========================= */
-function place(pos,p){
-
-  board[pos.y][pos.x]=p;
-  draw();
-
-  if(checkWin(pos.x,pos.y,p)){
-    gameOver=true;
-    setInfo(p===1?"あなたの勝ち！":"CPUの勝ち！");
-  }
-}
-
-/* =========================
    音
 ========================= */
 function playSound(){
@@ -270,6 +321,14 @@ function playSound(){
 }
 
 /* =========================
+   ランダム補助
+========================= */
+function shuffle(arr){
+
+  return arr.sort(()=>Math.random()-0.5);
+}
+
+/* =========================
    リセット
 ========================= */
 window.resetGame=()=>{
@@ -277,6 +336,10 @@ window.resetGame=()=>{
   board=Array.from({length:SIZE},()=>Array(SIZE).fill(0));
   gameOver=false;
   turn=1;
+
+  cpuCandidates=[];
+  cpuIndex=0;
+  cpuPhase=0;
 
   setInfo("あなたの番です");
   draw();
