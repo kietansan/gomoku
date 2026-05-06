@@ -1,52 +1,58 @@
 body{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  background:#e8d3a8;
+  text-align:center;
   font-family:sans-serif;
 }
 
 #board{
   position:relative;
-  width:416px;   /* 34px × 13 */
-  height:416px;
-  margin-top:20px;
+  width:442px;
+  height:442px;
+  margin:20px auto;
   background:#d8b56a;
-  box-shadow:0 4px 12px rgba(0,0,0,0.3);
+  border:2px solid #333;
 }
 
-/* 交点ノード */
-.node{
+/* 線 */
+.line{
+  position:absolute;
+  background:#333;
+  pointer-events:none;
+}
+
+.h-line{
+  height:1px;
+  width:100%;
+}
+
+.v-line{
+  width:1px;
+  height:100%;
+}
+
+/* 交点 */
+.cell{
   position:absolute;
   width:34px;
   height:34px;
-  box-sizing:border-box;
-  border:1px solid rgba(0,0,0,0.25);
-}
-
-/* 星 */
-.node.star::after{
-  content:"";
-  width:6px;
-  height:6px;
-  background:#2b1a10;
-  border-radius:50%;
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
+  cursor:pointer;
 }
 
 /* 石 */
 .stone{
-  width:24px;
-  height:24px;
-  border-radius:50%;
   position:absolute;
+  width:26px;
+  height:26px;
+  border-radius:50%;
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
 }
 
-.black{ background:black; }
-.white{ background:white; border:1px solid #999; }
+.black{
+  background:#000;
+}
+
+.white{
+  background:#fff;
+  border:1px solid #000;
+}
