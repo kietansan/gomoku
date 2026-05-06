@@ -1,22 +1,23 @@
+body{
+  text-align:center;
+  font-family:sans-serif;
+}
+
 #board{
   position:relative;
   width:442px;
   height:442px;
   margin:20px auto;
   background:#d8b56a;
+  border-radius:12px;
+  box-shadow:0 10px 20px rgba(0,0,0,0.3);
 }
 
-/* 線レイヤー */
-.lines{
-  position:absolute;
-  width:100%;
-  height:100%;
-  z-index:1;
-}
-
+/* 線（クリックを邪魔しない） */
 .line{
   position:absolute;
   background:#333;
+  pointer-events:none; /* ★重要 */
 }
 
 .h-line{
@@ -29,23 +30,22 @@
   height:100%;
 }
 
-/* 交点 */
+/* セル */
 .cell{
   position:absolute;
   width:34px;
   height:34px;
-  z-index:2;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
 }
 
 /* 石 */
 .stone{
-  position:absolute;
   width:26px;
   height:26px;
   border-radius:50%;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
 }
 
 .black{
@@ -59,13 +59,8 @@
 
 /* 星 */
 .star{
-  position:absolute;
   width:6px;
   height:6px;
   background:#000;
   border-radius:50%;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  z-index:2;
 }
