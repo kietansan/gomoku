@@ -92,12 +92,12 @@ function drawStone(x,y,p){
 }
 
 /* =========================
-   入力（ターン制）
+   人間ターン
 ========================= */
 document.addEventListener("click",(e)=>{
 
   if(gameOver) return;
-  if(turn !== 1) return; // ★ここ重要
+  if(turn !== 1) return;
 
   const rect = canvas.getBoundingClientRect();
 
@@ -120,11 +120,12 @@ document.addEventListener("click",(e)=>{
 
   turn = 2;
   setInfo("CPU思考中...");
-  setTimeout(cpuMove,50);
+
+  setTimeout(cpuMove, 10); // ★超軽量
 });
 
 /* =========================
-   CPU
+   CPU（軽量・安定版）
 ========================= */
 function cpuMove(){
 
@@ -132,19 +133,15 @@ function cpuMove(){
 
   let move;
 
-  // ① 即勝ち
-  move = findWin(2);
+  // ① 即勝ち（周囲だけ）
+  move = findWinFast(2);
   if(move) return place(move,2);
 
-  // ② 即負け防御
-  move = findWin(1);
+  // ② 即防御（周囲だけ）
+  move = findWinFast(1);
   if(move) return place(move,2);
 
-  // ③ 3連防御（両端なし対応）
-  move = findOpenThreeBlock(1);
-  if(move) return place(move,2);
-
-  // ④ ランダム
+  // ③ 軽量ランダム
   move = randomMove();
   place(move,2);
 
@@ -153,89 +150,33 @@ function cpuMove(){
 }
 
 /* =========================
-   3連検出（復活版）
+   ★高速版勝ちチェック（周囲限定）
 ========================= */
-function findOpenThree(player){
+function findWinFast(p){
 
-  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+  const candidates = getCandidates();
 
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
+  for(const pos of candidates){
 
-      if(board[y][x] !== player) continue;
+    board[pos.y][pos.x]=p;
 
-      for(const [dx,dy] of dirs){
-
-        let count = 1;
-        let open = 0;
-
-        let i=1;
-        while(board[y+dy*i]?.[x+dx*i]===player){
-          count++; i++;
-        }
-        if(board[y+dy*i]?.[x+dx*i]===0) open++;
-
-        i=1;
-        while(board[y-dy*i]?.[x-dx*i]===player){
-          count++; i++;
-        }
-        if(board[y-dy*i]?.[x-dx*i]===0) open++;
-
-        if(count===3 && open>=1){
-          return findBlock(x,y,dx,dy);
-        }
-      }
+    if(checkWin(pos.x,pos.y,p)){
+      board[pos.y][pos.x]=0;
+      return pos;
     }
-  }
 
-  return null;
-}
-
-/* 防御手取得 */
-function findBlock(x,y,dx,dy){
-
-  for(let i=-3;i<=3;i++){
-    const nx=x+dx*i;
-    const ny=y+dy*i;
-
-    if(board[ny]?.[nx]===0){
-      return {x:nx,y:ny};
-    }
+    board[pos.y][pos.x]=0;
   }
 
   return null;
 }
 
 /* =========================
-   勝ち手
+   候補生成（周囲だけ）
 ========================= */
-function findWin(p){
+function getCandidates(){
 
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]) continue;
-
-      board[y][x]=p;
-
-      if(checkWin(x,y,p)){
-        board[y][x]=0;
-        return {x,y};
-      }
-
-      board[y][x]=0;
-    }
-  }
-
-  return null;
-}
-
-/* =========================
-   ランダム
-========================= */
-function randomMove(){
-
-  const list=[];
+  const list = [];
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -248,18 +189,32 @@ function randomMove(){
     }
   }
 
-  return list[Math.floor(Math.random()*list.length)];
+  return list;
 }
 
+/* =========================
+   近傍チェック（軽量の核）
+========================= */
 function hasNeighbor(x,y){
 
   for(let dy=-1;dy<=1;dy++){
     for(let dx=-1;dx<=1;dx++){
+
       if(board[y+dy]?.[x+dx]) return true;
     }
   }
 
   return false;
+}
+
+/* =========================
+   ランダム
+========================= */
+function randomMove(){
+
+  const list = getCandidates();
+
+  return list[Math.floor(Math.random()*list.length)];
 }
 
 /* =========================
@@ -303,14 +258,20 @@ function place(pos,p){
   }
 }
 
-/* 音 */
+/* =========================
+   音
+========================= */
 function playSound(){
+
   if(!audio) return;
+
   audio.currentTime=0;
   audio.play().catch(()=>{});
 }
 
-/* リセット */
+/* =========================
+   リセット
+========================= */
 window.resetGame=()=>{
 
   board=Array.from({length:SIZE},()=>Array(SIZE).fill(0));
