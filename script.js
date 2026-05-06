@@ -38,7 +38,7 @@ function setInfo(text){
 }
 
 /* =========================
-   木目（軽量化）
+   木目
 ========================= */
 function drawWood(){
 
@@ -50,7 +50,7 @@ function drawWood(){
 
   for(let i=0;i<d.length;i+=4){
 
-    const grain = Math.random()*20;
+    const grain = Math.random()*25;
 
     const base = 200 + grain;
 
@@ -126,7 +126,7 @@ function drawStone(x,y,color){
 }
 
 /* =========================
-   クリック
+   入力
 ========================= */
 document.addEventListener("click",(e)=>{
 
@@ -148,16 +148,16 @@ document.addEventListener("click",(e)=>{
   playSound();
 
   if(checkWin(x,y,1)){
-    setInfo("あなたの勝ち！");
     gameOver=true;
+    setInfo("あなたの勝ち！");
     return;
   }
 
-  setTimeout(cpuMove,50);
+  setTimeout(cpuMove,80);
 });
 
 /* =========================
-   CPU（軽量正規化AI）
+   CPU
 ========================= */
 function cpuMove(){
 
@@ -169,20 +169,21 @@ function cpuMove(){
   move = findWinningMove(2);
   if(move) return place(move.x,move.y,2);
 
-  // ② 即死防御
+  // ② 即死防御（5連）
   move = findWinningMove(1);
   if(move) return place(move.x,move.y,2);
 
+  // ★②.5 3連防御（追加）
+  move = findOpenThreeBlock();
+  if(move) return place(move.x,move.y,2);
+
   // ③ 候補生成
-  let candidates = generateMoves();
+  const candidates = generateMoves();
 
   let best=null;
   let bestScore=-99999;
 
-  // ⑦ 軽量3手読み（制限付き）
-  for(let i=0;i<candidates.length;i++){
-
-    const m=candidates[i];
+  for(const m of candidates){
 
     board[m.y][m.x]=2;
 
@@ -194,8 +195,6 @@ function cpuMove(){
       bestScore=score;
       best=m;
     }
-
-    if(i>15) break; // ★重要：爆発防止
   }
 
   if(best) place(best.x,best.y,2);
@@ -204,7 +203,7 @@ function cpuMove(){
 }
 
 /* =========================
-   軽量探索（2手読み）
+   軽量探索
 ========================= */
 function lightSearch(depth,maxDepth,isHuman){
 
@@ -232,7 +231,7 @@ function lightSearch(depth,maxDepth,isHuman){
 }
 
 /* =========================
-   候補生成（超制限）
+   候補生成
 ========================= */
 function generateMoves(){
 
@@ -268,7 +267,7 @@ function hasNeighbor(x,y){
 }
 
 /* =========================
-   評価（軽量）
+   評価
 ========================= */
 function evaluate(){
 
@@ -337,6 +336,63 @@ function findWinningMove(p){
 }
 
 /* =========================
+   ★3連防御（追加）
+========================= */
+function findOpenThreeBlock(){
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]) continue;
+
+      board[y][x]=1;
+
+      if(isOpenThree(1)){
+        board[y][x]=0;
+        return {x,y};
+      }
+
+      board[y][x]=0;
+    }
+  }
+
+  return null;
+}
+
+/* =========================
+   3連判定
+========================= */
+function isOpenThree(p){
+
+  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]!==p) continue;
+
+      for(const [dx,dy] of dirs){
+
+        let c=1;
+        let open1=false,open2=false;
+
+        let i=1;
+        while(board[y+dy*i]?.[x+dx*i]===p){c++;i++;}
+        if(board[y+dy*i]?.[x+dx*i]===0) open1=true;
+
+        i=1;
+        while(board[y-dy*i]?.[x-dx*i]===p){c++;i++;}
+        if(board[y-dy*i]?.[x-dx*i]===0) open2=true;
+
+        if(c===3 && open1 && open2) return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/* =========================
    置く
 ========================= */
 function place(x,y,p){
@@ -369,7 +425,6 @@ function playSound(){
 window.resetGame=()=>{
 
   board=Array.from({length:SIZE},()=>Array(SIZE).fill(0));
-
   gameOver=false;
 
   setInfo("あなたの番です");
