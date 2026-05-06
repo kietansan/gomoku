@@ -1,4 +1,5 @@
 const SIZE = 13;
+const CELL = 34;
 
 let board = [];
 let gameOver = false;
@@ -12,28 +13,28 @@ const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 function init(){
 
   boardEl.innerHTML = "";
+
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
 
   infoEl.textContent = "あなたの番です";
 
   drawGrid();
+  drawStars();
   draw();
 }
 window.resetGame = init;
 
-/* ===== グリッド生成 ===== */
+/* ===== 13×13交点生成 ===== */
 function drawGrid(){
-
-  const cellSize = 34;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
       const cell = document.createElement("div");
       cell.className = "cell";
-      cell.style.left = x*cellSize + "px";
-      cell.style.top = y*cellSize + "px";
+      cell.style.left = x*CELL + "px";
+      cell.style.top = y*CELL + "px";
 
       cell.onclick = () => clickCell(x,y);
 
@@ -42,12 +43,28 @@ function drawGrid(){
   }
 }
 
+/* ===== 星（天元など） ===== */
+function drawStars(){
+
+  const stars = [
+    [3,3],[3,9],[9,3],[9,9],[6,6]
+  ];
+
+  for(const [x,y] of stars){
+
+    const s = document.createElement("div");
+    s.className = "star";
+    s.style.left = x*CELL + "px";
+    s.style.top = y*CELL + "px";
+
+    boardEl.appendChild(s);
+  }
+}
+
 /* ===== 描画 ===== */
 function draw(){
 
   document.querySelectorAll(".stone").forEach(e=>e.remove());
-
-  const cellSize = 34;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -57,8 +74,8 @@ function draw(){
       const stone = document.createElement("div");
       stone.className = "stone " + (board[y][x]===1 ? "black":"white");
 
-      stone.style.left = x*cellSize + "px";
-      stone.style.top = y*cellSize + "px";
+      stone.style.left = x*CELL + "px";
+      stone.style.top = y*CELL + "px";
 
       boardEl.appendChild(stone);
     }
@@ -88,7 +105,7 @@ function place(x,y,p){
 
   if(checkWin(x,y,p)){
     gameOver=true;
-    infoEl.textContent = p===1?"あなたの勝ち":"CPUの勝ち";
+    infoEl.textContent = p===1 ? "あなたの勝ち" : "CPUの勝ち";
   }
 }
 
@@ -117,12 +134,13 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* ===== CPU（簡易安定版） ===== */
+/* ===== CPU（安定版） ===== */
 function cpuMove(){
 
   // 即勝ち
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
+
       if(board[y][x]) continue;
 
       board[y][x]=2;
@@ -138,6 +156,7 @@ function cpuMove(){
   // 防御
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
+
       if(board[y][x]) continue;
 
       board[y][x]=1;
@@ -151,7 +170,7 @@ function cpuMove(){
     }
   }
 
-  // 適当評価
+  // 適当着手（安定用）
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(!board[y][x]){
