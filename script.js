@@ -13,13 +13,17 @@ const sound = document.getElementById("sound");
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
 /* =========================
-   星位置（碁盤風）
+   星（碁盤）
 ========================= */
-const starPoints = [
-  [3,3],[3,11],
-  [11,3],[11,11],
-  [7,7]
-];
+function isStar(x,y){
+  return (
+    (x===3 && y===3) ||
+    (x===3 && y===11) ||
+    (x===11 && y===3) ||
+    (x===11 && y===11) ||
+    (x===7 && y===7)
+  );
+}
 
 /* =========================
    初期化
@@ -31,7 +35,6 @@ function init(){
 
   setInfo("あなたの番です");
   draw();
-  markStars();
 }
 
 function resetGame(){
@@ -49,7 +52,7 @@ function setInfo(text){
 }
 
 /* =========================
-   描画
+   描画（星統合済み）
 ========================= */
 function draw(){
   boardEl.innerHTML = "";
@@ -61,6 +64,11 @@ function draw(){
     for(let x=0;x<SIZE;x++){
       const cell = document.createElement("div");
       cell.className = "cell";
+
+      // ★星（ここで必ず付与）
+      if(isStar(x,y)){
+        cell.classList.add("star");
+      }
 
       if(board[y][x]){
         const stone = document.createElement("div");
@@ -81,18 +89,6 @@ function draw(){
 }
 
 /* =========================
-   星を付与
-========================= */
-function markStars(){
-  for(const [x,y] of starPoints){
-    const cell = boardEl.children[y]?.children[x];
-    if(cell){
-      cell.classList.add("star");
-    }
-  }
-}
-
-/* =========================
    プレイヤー
 ========================= */
 function playerMove(x,y){
@@ -109,7 +105,7 @@ function playerMove(x,y){
   setTimeout(()=>{
     if(gameOver || id !== gameId) return;
     cpuMove(id);
-  }, 50);
+  },50);
 }
 
 /* =========================
@@ -196,7 +192,7 @@ function timeUp(){
 }
 
 /* =========================
-   候補手（安定）
+   候補手
 ========================= */
 function getMoves(){
 
@@ -303,7 +299,6 @@ function place(x,y,p){
   lastMove={x,y};
 
   draw();
-  markStars(); // ←重要（再描画後に復活）
 
   if(checkWin(x,y,p)){
     gameOver=true;
