@@ -6,20 +6,22 @@ body{
   font-family:sans-serif;
 }
 
-/* 盤 */
+/* ★盤（自然な木目） */
 #board{
   margin-top:20px;
   padding:18px;
 
-  /* ★木目（弱めにして線を優先） */
   background:
+    linear-gradient(135deg,#d8b56a,#caa25c),
     repeating-linear-gradient(
       90deg,
-      #d8b56a 0px,
-      #d8b56a 12px,
-      #d1aa5d 12px,
-      #d1aa5d 24px
+      rgba(0,0,0,0.04) 0px,
+      rgba(0,0,0,0.04) 2px,
+      transparent 2px,
+      transparent 14px
     );
+
+  background-blend-mode:multiply;
 
   box-shadow:0 10px 25px rgba(0,0,0,0.4);
 }
@@ -57,8 +59,10 @@ body{
   transform:translateX(-0.5px);
 }
 
-/* ノード */
+/* ノード（交点） */
 .node{
+  width:34px;
+  height:34px;
   position:relative;
 }
 
