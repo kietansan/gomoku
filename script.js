@@ -62,67 +62,158 @@ function playerMove(x,y){
   }
 
   draw();
-  setTimeout(cpuMove, 10);
+  setTimeout(cpuMove, 5);
 }
 
 /* =========================
-   CPUメイン（統合型AI）
+   CPU（本体）
 ========================= */
 function cpuMove(){
   if(gameOver) return;
 
-  let bestMove = null;
-  let bestScore = -Infinity;
+  let move;
 
-  const moves = getMoves();
+  // 1. 自分即勝ち
+  move = findWin(2);
+  if(move) return place(move);
 
-  for(const m of moves){
+  // 2. 相手即勝ち阻止
+  move = findWin(1);
+  if(move) return place(move);
 
-    board[m.y][m.x] = 2;
+  // 3. 相手の両取り（フォーク）阻止
+  move = findForkBlock(1);
+  if(move) return place(move);
 
-    let score =
-      evaluate(m.x,m.y,2) +   // 自分の形
-      evaluateEnemy(m.x,m.y); // 相手阻止力
+  // 4. 自分の両取り作成
+  move = findForkCreate(2);
+  if(move) return place(move);
 
-    board[m.y][m.x] = 0;
-
-    if(score > bestScore){
-      bestScore = score;
-      bestMove = m;
-    }
-  }
-
-  place(bestMove);
-
-  if(checkWin(bestMove.x,bestMove.y,2)){
-    gameOver = true;
-    infoEl.textContent = "CPUの勝ち";
-  }
+  // 5. 最終評価
+  move = bestMove();
+  return place(move);
 }
 
 /* =========================
-   候補手（近傍のみ）
+   即勝ち/即防御
 ========================= */
-function getMoves(){
-  const moves = [];
-  const c = SIZE/2;
+function findWin(p){
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]) continue;
+
+      board[y][x]=p;
+      if(checkWin(x,y,p)){
+        board[y][x]=0;
+        return {x,y};
+      }
+      board[y][x]=0;
+    }
+  }
+  return null;
+}
+
+/* =========================
+   フォーク防御（超重要）
+   2方向以上の3を潰す
+========================= */
+function findForkBlock(p){
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-
       if(board[y][x]) continue;
 
-      let near = false;
+      board[y][x]=p;
 
-      for(let dy=-1;dy<=1;dy++){
-        for(let dx=-1;dx<=1;dx++){
-          if(board[y+dy]?.[x+dx]) near = true;
+      let threats=0;
+
+      for(const [dx,dy] of DIRS){
+        const {count,open}=line(x,y,dx,dy,p);
+        if(count===3 && open===2) threats++;
+      }
+
+      board[y][x]=0;
+
+      if(threats>=2) return {x,y};
+    }
+  }
+
+  return null;
+}
+
+/* =========================
+   フォーク生成（攻撃核）
+========================= */
+function findForkCreate(p){
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]) continue;
+
+      board[y][x]=p;
+
+      let threats=0;
+
+      for(const [dx,dy] of DIRS){
+        const {count,open}=line(x,y,dx,dy,p);
+        if(count===3 && open===2) threats++;
+      }
+
+      board[y][x]=0;
+
+      if(threats>=2) return {x,y};
+    }
+  }
+
+  return null;
+}
+
+/* =========================
+   最終評価（シンプルで強い）
+========================= */
+function bestMove(){
+
+  let best=null;
+  let bestScore=-Infinity;
+
+  const moves=getMoves();
+
+  for(const m of moves){
+
+    board[m.y][m.x]=2;
+
+    let score = evaluate(2) - evaluate(1)*1.2;
+
+    board[m.y][m.x]=0;
+
+    if(score>bestScore){
+      bestScore=score;
+      best=m;
+    }
+  }
+
+  return best;
+}
+
+/* =========================
+   候補手（重要：中央＋近傍のみ）
+========================= */
+function getMoves(){
+  const moves=[];
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]) continue;
+
+      let near=false;
+
+      for(let dy=-2;dy<=2;dy++){
+        for(let dx=-2;dx<=2;dx++){
+          if(board[y+dy]?.[x+dx]) near=true;
         }
       }
 
-      if(!near && moves.length > 30) continue;
-
-      moves.push({x,y});
+      if(near) moves.push({x,y});
     }
   }
 
@@ -130,44 +221,25 @@ function getMoves(){
 }
 
 /* =========================
-   自分評価
+   評価関数（単純・強い）
 ========================= */
-function evaluate(x,y,p){
+function evaluate(p){
 
-  let score = 0;
+  let score=0;
 
-  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]!==p) continue;
 
-  for(const [dx,dy] of dirs){
-    const {count,open} = getLine(x,y,dx,dy,p);
+      for(const [dx,dy] of DIRS){
+        const {count,open}=line(x,y,dx,dy,p);
 
-    if(count >= 5) score += 1000000;
-    else if(count === 4) score += 50000;
-    else if(count === 3 && open === 2) score += 15000;
-    else if(count === 3) score += 3000;
-    else if(count === 2) score += 500;
-  }
-
-  return score;
-}
-
-/* =========================
-   相手阻止評価（ここ重要）
-========================= */
-function evaluateEnemy(x,y){
-
-  let score = 0;
-
-  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
-
-  for(const [dx,dy] of dirs){
-
-    const {count,open} = getLine(x,y,dx,dy,1);
-
-    if(count >= 5) score += 900000;
-    else if(count === 4) score += 80000;
-    else if(count === 3 && open === 2) score += 20000;
-    else if(count === 3) score += 5000;
+        if(count>=5) score+=1000000;
+        else if(count===4) score+=50000;
+        else if(count===3 && open===2) score+=12000;
+        else if(count===2) score+=800;
+      }
+    }
   }
 
   return score;
@@ -176,44 +248,44 @@ function evaluateEnemy(x,y){
 /* =========================
    ライン判定
 ========================= */
-function getLine(x,y,dx,dy,p){
-  let count=1, open=0;
+function line(x,y,dx,dy,p){
+
+  let c=1, open=0;
 
   let nx=x+dx, ny=y+dy;
-  while(board[ny]?.[nx] === p){
-    count++; nx+=dx; ny+=dy;
+  while(board[ny]?.[nx]===p){
+    c++; nx+=dx; ny+=dy;
   }
-  if(board[ny]?.[nx] === 0) open++;
+  if(board[ny]?.[nx]===0) open++;
 
   nx=x-dx; ny=y-dy;
-  while(board[ny]?.[nx] === p){
-    count++; nx-=dx; ny-=dy;
+  while(board[ny]?.[nx]===p){
+    c++; nx-=dx; ny-=dy;
   }
-  if(board[ny]?.[nx] === 0) open++;
+  if(board[ny]?.[nx]===0) open++;
 
-  return {count,open};
+  return {count:c,open};
 }
 
 /* =========================
    勝利判定
 ========================= */
-function checkWin(x,y,p){
-  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
+const DIRS=[[1,0],[0,1],[1,1],[1,-1]];
 
-  for(const [dx,dy] of dirs){
+function checkWin(x,y,p){
+  for(const [dx,dy] of DIRS){
     let c=1;
 
     for(const d of [-1,1]){
       let nx=x+dx*d, ny=y+dy*d;
 
-      while(board[ny]?.[nx] === p){
+      while(board[ny]?.[nx]===p){
         c++; nx+=dx*d; ny+=dy*d;
       }
     }
 
-    if(c >= 5) return true;
+    if(c>=5) return true;
   }
-
   return false;
 }
 
@@ -221,7 +293,7 @@ function checkWin(x,y,p){
    着手
 ========================= */
 function place(m){
-  board[m.y][m.x] = 2;
+  board[m.y][m.x]=2;
   playSound();
   draw();
 }
@@ -230,7 +302,7 @@ function place(m){
    音
 ========================= */
 function playSound(){
-  sound.currentTime = 0;
+  sound.currentTime=0;
   sound.play().catch(()=>{});
 }
 
