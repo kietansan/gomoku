@@ -1,13 +1,13 @@
 // ====== 設定 ======
-const SIZE = 13;          // 盤面交点数
-const CELL = 40;          // セルサイズ
-const MARGIN = 40;        // 余白
-let board = [];           // 盤面配列
-let canvas, ctx;          // Canvas
-let turn = 1;             // 1=Player, 2=CPU
+const SIZE = 13;       // 盤面交点数
+const CELL = 40;       // セルサイズ
+const MARGIN = 40;     // 余白
+let board = [];        // 盤面配列
+let canvas, ctx;       // Canvas
+let turn = 1;          // 1=Player, 2=CPU
 let gameOver = false;
 let thinking = false;
-let audio;                // 石置き音
+let audio;             // 石置き音
 
 // 星の位置
 const HOSHI = [[3,3],[3,9],[9,3],[9,9],[6,6]];
@@ -22,8 +22,10 @@ window.onload = () => {
   canvas.width = (SIZE-1)*CELL + MARGIN*2;
   canvas.height = (SIZE-1)*CELL + MARGIN*2;
 
-  board = Array.from({length: SIZE}, ()=>Array(SIZE).fill(0));
+  // 盤面初期化
+  board = Array.from({length: SIZE},()=>Array(SIZE).fill(0));
 
+  // 初期状態
   turn = 1;
   gameOver = false;
   thinking = false;
@@ -39,36 +41,41 @@ function setInfo(txt){
 
 // ====== 盤面描画 ======
 function draw(){
-  // 背景（透明のためクリアのみ）
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  try{
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // 線
-  ctx.strokeStyle = "#333";
-  ctx.lineWidth = 1;
-  for(let i=0;i<SIZE;i++){
-    ctx.beginPath();
-    ctx.moveTo(MARGIN + i*CELL, MARGIN);
-    ctx.lineTo(MARGIN + i*CELL, MARGIN + (SIZE-1)*CELL);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(MARGIN, MARGIN + i*CELL);
-    ctx.lineTo(MARGIN + (SIZE-1)*CELL, MARGIN + i*CELL);
-    ctx.stroke();
-  }
+    // 線
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 1;
+    for(let i=0;i<SIZE;i++){
+      ctx.beginPath();
+      ctx.moveTo(MARGIN + i*CELL, MARGIN);
+      ctx.lineTo(MARGIN + i*CELL, MARGIN + (SIZE-1)*CELL);
+      ctx.stroke();
 
-  // 星
-  ctx.fillStyle="#222";
-  for(const [x,y] of HOSHI){
-    ctx.beginPath();
-    ctx.arc(MARGIN + x*CELL, MARGIN + y*CELL, 3, 0, Math.PI*2);
-    ctx.fill();
-  }
-
-  // 石
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(board[y][x]) drawStone(x,y,board[y][x]);
+      ctx.beginPath();
+      ctx.moveTo(MARGIN, MARGIN + i*CELL);
+      ctx.lineTo(MARGIN + (SIZE-1)*CELL, MARGIN + i*CELL);
+      ctx.stroke();
     }
+
+    // 星
+    ctx.fillStyle="#222";
+    for(const [x,y] of HOSHI){
+      ctx.beginPath();
+      ctx.arc(MARGIN + x*CELL, MARGIN + y*CELL, 3, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // 石
+    for(let y=0;y<SIZE;y++){
+      for(let x=0;x<SIZE;x++){
+        if(board[y][x]) drawStone(x,y,board[y][x]);
+      }
+    }
+
+  }catch(e){
+    console.error("draw error:", e);
   }
 }
 
@@ -138,6 +145,7 @@ function cpuMove(){
   }
 
   if(best) placeStone(best,2);
+
   thinking = false;
   turn = 1;
   setInfo("あなたの番です");
@@ -233,20 +241,4 @@ function isDoubleEnded3(pos,p){
     for(let i=1;i<=2;i++){
       const nx=pos.x+dx*i, ny=pos.y+dy*i;
       if(board[ny]?.[nx]===p) count++;
-      else if(board[ny]?.[nx]===0){emptyAfter=true; break;}
-      else break;
-    }
-    if(count===3 && emptyBefore && emptyAfter) return true;
-  }
-  return false;
-}
-
-// ====== ダブル脅威チェック ======
-function isTwoThreats(pos,p){
-  let cnt=0;
-  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
-  for(const [dx,dy] of dirs){
-    let count=1;
-    for(let i=1;i<=2;i++){
-      const nx=pos.x+dx*i, ny=pos.y+dy*i;
-      if(board[ny
+      else if(board[ny]?.[nx]===0){emptyAfter
