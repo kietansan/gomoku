@@ -25,15 +25,6 @@ function playSound(){
   sound.play().catch(()=>{});
 }
 
-/* 星 */
-function isStar(x,y){
-  return (
-    (x===3&&y===3)||(x===3&&y===9)||
-    (x===9&&y===3)||(x===9&&y===9)||
-    (x===6&&y===6)
-  );
-}
-
 /* 描画 */
 function draw(){
   boardEl.innerHTML = "";
@@ -41,25 +32,9 @@ function draw(){
   const grid = document.createElement("div");
   grid.className = "grid";
 
-  const lines = document.createElement("div");
-  lines.className = "lines";
-
-  for(let i=0;i<SIZE;i++){
-    const h=document.createElement("div");
-    h.className="h-line";
-    h.style.top = (i*CELL + CELL/2)+"px";
-    lines.appendChild(h);
-
-    const v=document.createElement("div");
-    v.className="v-line";
-    v.style.left = (i*CELL + CELL/2)+"px";
-    lines.appendChild(v);
-  }
-
-  grid.appendChild(lines);
-
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
+
       const node=document.createElement("div");
       node.className="node";
       node.style.gridColumn=x+1;
@@ -68,12 +43,6 @@ function draw(){
       if(board[y][x]){
         const s=document.createElement("div");
         s.className="stone "+(board[y][x]===1?"black":"white");
-        node.appendChild(s);
-      }
-
-      if(isStar(x,y)){
-        const s=document.createElement("div");
-        s.className="star";
         node.appendChild(s);
       }
 
@@ -137,7 +106,7 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* 候補手（重要：強い順） */
+/* 候補手 */
 function getMoves(){
   const moves=[];
 
@@ -157,30 +126,52 @@ function getMoves(){
       }
 
       if(near){
-        const score = evalMove(x,y,2);
-        moves.push({x,y,score});
+        moves.push({x,y});
       }
     }
   }
 
-  // スコア順ソート
-  moves.sort((a,b)=>b.score-a.score);
-
-  return moves.slice(0,8); // ★重要：上位のみ
+  return moves.length?moves:[{x:6,y:6}];
 }
 
-/* 手の評価 */
-function evalMove(x,y,p){
-  board[y][x]=p;
-  const s = evaluate();
-  board[y][x]=0;
-  return s;
+/* ===== 両空き3検出 ===== */
+function findOpenThreeBlock(){
+
+  for(let m of getMoves()){
+    board[m.y][m.x] = 1;
+
+    for(const [dx,dy] of DIRS){
+
+      let count=1, open=0;
+
+      let nx=m.x+dx, ny=m.y+dy;
+      while(board[ny]?.[nx]===1){
+        count++; nx+=dx; ny+=dy;
+      }
+      if(board[ny]?.[nx]===0) open++;
+
+      nx=m.x-dx; ny=m.y-dy;
+      while(board[ny]?.[nx]===1){
+        count++; nx-=dx; ny-=dy;
+      }
+      if(board[ny]?.[nx]===0) open++;
+
+      if(count===3 && open===2){
+        board[m.y][m.x] = 0;
+        return m;
+      }
+    }
+
+    board[m.y][m.x] = 0;
+  }
+
+  return null;
 }
 
-/* CPU */
+/* ===== CPU ===== */
 function cpuMove(){
 
-  // 即勝ち
+  // 勝ち
   for(let m of getMoves()){
     board[m.y][m.x]=2;
     if(checkWin(m.x,m.y,2)){
@@ -191,7 +182,7 @@ function cpuMove(){
     board[m.y][m.x]=0;
   }
 
-  // 即防御
+  // 防御
   for(let m of getMoves()){
     board[m.y][m.x]=1;
     if(checkWin(m.x,m.y,1)){
@@ -202,17 +193,23 @@ function cpuMove(){
     board[m.y][m.x]=0;
   }
 
+  // ★三連防御（超重要）
+  const block3 = findOpenThreeBlock();
+  if(block3){
+    place(block3.x,block3.y,2);
+    return;
+  }
+
+  // 探索
   const limit = performance.now()+3000;
 
   let best=null;
   let bestScore=-Infinity;
 
-  const moves = getMoves();
-
-  for(let m of moves){
+  for(let m of getMoves()){
     if(performance.now()>limit) break;
 
-    const score = search(m.x,m.y,2,3,limit);
+    const score = evaluateMove(m.x,m.y,2);
 
     if(score>bestScore){
       bestScore=score;
@@ -225,44 +222,15 @@ function cpuMove(){
   }
 }
 
-/* 探索（シンプル深さ優先） */
-function search(x,y,p,depth,limit){
-
-  if(performance.now()>limit) return evaluate();
-
+/* ===== 簡易評価 ===== */
+function evaluateMove(x,y,p){
   board[y][x]=p;
-
-  if(checkWin(x,y,p)){
-    board[y][x]=0;
-    return p===2 ? 100000 : -100000;
-  }
-
-  if(depth===0){
-    const val=evaluate();
-    board[y][x]=0;
-    return val;
-  }
-
-  const nextMoves=getMoves();
-
-  let best = (p===2) ? -Infinity : Infinity;
-
-  for(let m of nextMoves){
-
-    const val = search(m.x,m.y, p===2?1:2, depth-1, limit);
-
-    if(p===2){
-      if(val>best) best=val;
-    }else{
-      if(val<best) best=val;
-    }
-  }
-
+  const val = evaluate();
   board[y][x]=0;
-  return best;
+  return val;
 }
 
-/* 評価（重要） */
+/* ===== 評価 ===== */
 function evaluate(){
   let score=0;
 
@@ -293,6 +261,7 @@ function evaluate(){
       }
     }
   }
+
   return score;
 }
 
