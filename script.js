@@ -58,57 +58,48 @@ function draw(){
 function playerMove(x,y){
   if(gameOver || board[y][x]) return;
 
-  board[y][x] = 1;
-  lastMove = {x,y};
-  playSound();
+  place({x,y},1);
 
-  if(checkWin(x,y,1)){
-    gameOver = true;
-    infoEl.textContent = "あなたの勝ち";
-    draw();
-    return;
-  }
+  if(gameOver) return;
 
-  draw();
   setTimeout(cpuMove, 5);
 }
 
 /* =========================
-   CPU本体（強化版）
+   CPU
 ========================= */
 function cpuMove(){
   if(gameOver) return;
 
   let move;
 
-  // ① 即勝ち
+  // ① CPU即勝ち
   move = findWin(2);
-  if(move) return place(move, "CPUの勝ち");
+  if(move) return place(move,2);
 
-  // ② 即防御
+  // ② プレイヤー即勝ち阻止
   move = findWin(1);
-  if(move) return place(move);
+  if(move) return place(move,2);
 
-  // ③ 相手フォーク防御
-  move = findForkBlock(1);
-  if(move) return place(move);
+  // ③ フォーク防御
+  move = findFork(1);
+  if(move) return place(move,2);
 
-  // ④ 自分フォーク作成
-  move = findForkCreate(2);
-  if(move) return place(move);
+  // ④ フォーク作成
+  move = findFork(2);
+  if(move) return place(move,2);
 
-  // ⑤ 最強評価
+  // ⑤ 評価
   move = bestMove();
-  return place(move);
+  return place(move,2);
 }
 
 /* =========================
-   勝ち手検出
+   勝ち手探索
 ========================= */
 function findWin(p){
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-
       if(board[y][x]) continue;
 
       board[y][x]=p;
@@ -125,78 +116,45 @@ function findWin(p){
 }
 
 /* =========================
-   フォーク防御
+   フォーク（両取り）
 ========================= */
-function findForkBlock(p){
-
+function findFork(p){
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-
       if(board[y][x]) continue;
 
       board[y][x]=p;
 
-      let count=0;
+      let threat=0;
 
       for(const [dx,dy] of DIRS){
-        const {count:c,open} = line(x,y,dx,dy,p);
-        if(c===3 && open===2) count++;
+        const {count,open}=line(x,y,dx,dy,p);
+        if(count===3 && open===2) threat++;
       }
 
       board[y][x]=0;
 
-      if(count>=2) return {x,y};
+      if(threat>=2) return {x,y};
     }
   }
-
   return null;
 }
 
 /* =========================
-   フォーク作成
-========================= */
-function findForkCreate(p){
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]) continue;
-
-      board[y][x]=p;
-
-      let count=0;
-
-      for(const [dx,dy] of DIRS){
-        const {count:c,open} = line(x,y,dx,dy,p);
-        if(c===3 && open===2) count++;
-      }
-
-      board[y][x]=0;
-
-      if(count>=2) return {x,y};
-    }
-  }
-
-  return null;
-}
-
-/* =========================
-   最終評価
+   最善手
 ========================= */
 function bestMove(){
-
   let best=null;
   let bestScore=-Infinity;
 
   const moves=getMoves();
 
   for(const m of moves){
-
     board[m.y][m.x]=2;
 
     let score =
       evaluate(2) -
-      evaluate(1)*1.3;
+      evaluate(1)*1.25;
 
     board[m.y][m.x]=0;
 
@@ -210,14 +168,13 @@ function bestMove(){
 }
 
 /* =========================
-   候補手（近傍のみ）
+   候補手（近傍制限）
 ========================= */
 function getMoves(){
   const moves=[];
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-
       if(board[y][x]) continue;
 
       let near=false;
@@ -232,23 +189,21 @@ function getMoves(){
     }
   }
 
-  return moves;
+  return moves.length ? moves : [{x:7,y:7}];
 }
 
 /* =========================
-   評価
+   評価関数
 ========================= */
 function evaluate(p){
-
   let score=0;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-
       if(board[y][x]!==p) continue;
 
       for(const [dx,dy] of DIRS){
-        const {count,open} = line(x,y,dx,dy,p);
+        const {count,open}=line(x,y,dx,dy,p);
 
         if(count>=5) score+=1000000;
         else if(count===4) score+=50000;
@@ -262,10 +217,9 @@ function evaluate(p){
 }
 
 /* =========================
-   ライン
+   ライン判定
 ========================= */
 function line(x,y,dx,dy,p){
-
   let c=1, open=0;
 
   let nx=x+dx, ny=y+dy;
@@ -304,27 +258,32 @@ function checkWin(x,y,p){
 }
 
 /* =========================
-   着手
+   着手（唯一の勝敗処理）
 ========================= */
-function place(m,msg){
-  board[m.y][m.x]=2;
+function place(m,p){
+  board[m.y][m.x]=p;
   lastMove=m;
+
   playSound();
   draw();
 
-  if(checkWin(m.x,m.y,2)){
+  if(checkWin(m.x,m.y,p)){
     gameOver=true;
-    infoEl.textContent = msg || "CPUの勝ち";
+    infoEl.textContent = p===2 ? "CPUの勝ち" : "あなたの勝ち";
   }
 }
 
-/* 音 */
+/* =========================
+   音
+========================= */
 function playSound(){
   sound.currentTime=0;
   sound.play().catch(()=>{});
 }
 
-/* リセット */
+/* =========================
+   リセット
+========================= */
 function resetGame(){
   init();
 }
