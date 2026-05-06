@@ -6,7 +6,7 @@ body{
   font-family:sans-serif;
 }
 
-/* ★盤（自然な木目） */
+/* 盤（木目） */
 #board{
   margin-top:20px;
   padding:18px;
@@ -34,32 +34,34 @@ body{
   grid-template-rows:repeat(13,34px);
 }
 
-/* 線 */
+/* 線レイヤ */
 .lines{
   position:absolute;
   inset:0;
   pointer-events:none;
 }
 
+/* ★横線（端で止まる） */
 .h-line{
   position:absolute;
-  left:0;
-  right:0;
+  left:17px;
+  right:17px;
   height:1px;
   background:#2b1a10;
   transform:translateY(-0.5px);
 }
 
+/* ★縦線（端で止まる） */
 .v-line{
   position:absolute;
-  top:0;
-  bottom:0;
+  top:17px;
+  bottom:17px;
   width:1px;
   background:#2b1a10;
   transform:translateX(-0.5px);
 }
 
-/* ノード（交点） */
+/* ノード */
 .node{
   width:34px;
   height:34px;
