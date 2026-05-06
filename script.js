@@ -16,8 +16,8 @@ function init(){
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
 
-  canvas.width = CELL * (SIZE - 1);
-  canvas.height = CELL * (SIZE - 1);
+  canvas.width = CELL*(SIZE-1);
+  canvas.height = CELL*(SIZE-1);
 
   infoEl.textContent = "あなたの番です";
 
@@ -39,16 +39,15 @@ function draw(){
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // 木目背景
-  ctx.fillStyle = "#d8b56a";
+  // 背景
+  ctx.fillStyle="#d8b56a";
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  // 線
-  ctx.strokeStyle = "#333";
-  ctx.lineWidth = 1;
+  // 縦横線
+  ctx.strokeStyle="#333";
+  ctx.lineWidth=1;
 
   for(let i=0;i<SIZE;i++){
-
     ctx.beginPath();
     ctx.moveTo(i*CELL,0);
     ctx.lineTo(i*CELL,CELL*(SIZE-1));
@@ -64,9 +63,9 @@ function draw(){
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(isStar(x,y)){
-        ctx.fillStyle="#111";
         ctx.beginPath();
         ctx.arc(x*CELL,y*CELL,3,0,Math.PI*2);
+        ctx.fillStyle="#000";
         ctx.fill();
       }
     }
@@ -95,7 +94,7 @@ function draw(){
   }
 }
 
-/* ===== クリック（ズレ完全対策） ===== */
+/* ===== クリック（ズレ完全修正） ===== */
 canvas.onclick = (e)=>{
 
   if(gameOver) return;
@@ -123,7 +122,6 @@ canvas.onclick = (e)=>{
 function place(x,y,p){
 
   board[y][x]=p;
-
   draw();
 
   if(checkWin(x,y,p)){
@@ -135,6 +133,7 @@ function place(x,y,p){
 /* ===== 勝利 ===== */
 function checkWin(x,y,p){
   for(const [dx,dy] of DIRS){
+
     let c=1;
 
     for(const d of [-1,1]){
@@ -152,125 +151,14 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* ===== 危険判定 ===== */
-function isDanger(x,y,p){
-
-  board[y][x]=p;
-
-  for(const [dx,dy] of DIRS){
-
-    let c=1,o=0;
-
-    let nx=x+dx,ny=y+dy;
-    while(board[ny]?.[nx]===p){c++;nx+=dx;ny+=dy;}
-    if(board[ny]?.[nx]===0) o++;
-
-    nx=x-dx;ny=y-dy;
-    while(board[ny]?.[nx]===p){c++;nx-=dx;ny-=dy;}
-    if(board[ny]?.[nx]===0) o++;
-
-    if(c>=4 || (c===3 && o===2)){
-      board[y][x]=0;
-      return true;
-    }
-  }
-
-  board[y][x]=0;
-  return false;
-}
-
-/* ===== ダブル脅威 ===== */
-function threatCount(x,y,p){
-
-  let t=0;
-
-  board[y][x]=p;
-
-  for(const [dx,dy] of DIRS){
-
-    let c=1,o=0;
-
-    let nx=x+dx,ny=y+dy;
-    while(board[ny]?.[nx]===p){c++;nx+=dx;ny+=dy;}
-    if(board[ny]?.[nx]===0) o++;
-
-    nx=x-dx;ny=y-dy;
-    while(board[ny]?.[nx]===p){c++;nx-=dx;ny+=dy;}
-    if(board[ny]?.[nx]===0) o++;
-
-    if(c>=4 || (c===3 && o===2)) t++;
-  }
-
-  board[y][x]=0;
-  return t;
-}
-
-/* ===== 評価 ===== */
-function evalPos(x,y,p){
-
-  let s=0;
-
-  for(const [dx,dy] of DIRS){
-
-    let c=1,o=0;
-
-    let nx=x+dx,ny=y+dy;
-    while(board[ny]?.[nx]===p){c++;nx+=dx;ny+=dy;}
-    if(board[ny]?.[nx]===0) o++;
-
-    nx=x-dx;ny=y-dy;
-    while(board[ny]?.[nx]===p){c++;nx-=dx;ny-=dy;}
-    if(board[ny]?.[nx]===0) o++;
-
-    if(c>=5) s+=100000;
-    else if(c===4&&o===2) s+=20000;
-    else if(c===4&&o===1) s+=5000;
-    else if(c===3&&o===2) s+=2000;
-  }
-
-  return s;
-}
-
-/* ===== 候補手 ===== */
-function getMoves(){
-
-  const list=[];
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]) continue;
-
-      let near=false;
-
-      for(let dy=-2;dy<=2;dy++){
-        for(let dx=-2;dx<=2;dx++){
-          if(board[y+dy]?.[x+dx]) near=true;
-        }
-      }
-
-      if(!near) continue;
-
-      list.push({x,y,
-        score:
-          evalPos(x,y,2)*1.2 +
-          evalPos(x,y,1)
-      });
-    }
-  }
-
-  list.sort((a,b)=>b.score-a.score);
-
-  return list.slice(0,8);
-}
-
-/* ===== CPU ===== */
+/* ===== CPU（簡易強化） ===== */
 function cpuMove(){
 
-  // 勝ち
+  // 即勝ち
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
+
       board[y][x]=2;
       if(checkWin(x,y,2)){
         board[y][x]=0;
@@ -285,6 +173,7 @@ function cpuMove(){
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
+
       board[y][x]=1;
       if(checkWin(x,y,1)){
         board[y][x]=0;
@@ -295,64 +184,40 @@ function cpuMove(){
     }
   }
 
-  // ダブル脅威
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(board[y][x]) continue;
-      if(threatCount(x,y,2)>=2){
-        place(x,y,2);
-        return;
-      }
-    }
-  }
-
-  // 危険防御
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(board[y][x]) continue;
-      if(isDanger(x,y,1)){
-        place(x,y,2);
-        return;
-      }
-    }
-  }
-
-  // 評価
-  const moves=getMoves();
-
-  let best=moves[0];
+  // 適当評価（最低限安定）
+  let best=null;
   let bestScore=-Infinity;
 
-  for(const m of moves){
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
 
-    board[m.y][m.x]=2;
+      if(board[y][x]) continue;
 
-    let worst=Infinity;
+      let s=0;
 
-    const next=getMoves();
+      for(const [dx,dy] of DIRS){
 
-    for(const n of next){
+        let c=1;
 
-      board[n.y][n.x]=1;
+        let nx=x+dx,ny=y+dy;
+        while(board[ny]?.[nx]){c++;nx+=dx;ny+=dy;}
 
-      const val =
-        evalPos(n.x,n.y,1) -
-        evalPos(m.x,m.y,2);
+        nx=x-dx;ny=y-dy;
+        while(board[ny]?.[nx]){c++;nx-=dx;ny-=dy;}
 
-      board[n.y][n.x]=0;
+        s += c;
+      }
 
-      if(val<worst) worst=val;
-    }
-
-    board[m.y][m.x]=0;
-
-    if(worst>bestScore){
-      bestScore=worst;
-      best=m;
+      if(s>bestScore){
+        bestScore=s;
+        best={x,y};
+      }
     }
   }
 
-  place(best.x,best.y,2);
+  if(best){
+    place(best.x,best.y,2);
+  }
 }
 
 init();
