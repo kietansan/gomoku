@@ -2,15 +2,14 @@ body{
   margin:0;
   text-align:center;
   font-family:sans-serif;
-  background:#d9d2c3;
+  background:#e6e0d2;
 }
 
-/* 盤の外側余白（上下左右） */
 canvas{
   display:block;
-  margin:40px auto;
-  background:#caa46a; /* 余白と同じ木色 */
-  box-shadow:0 6px 18px rgba(0,0,0,0.3);
+  margin:30px auto;
+  background:#d8b56a;
+  box-shadow:0 6px 20px rgba(0,0,0,0.3);
   border-radius:6px;
 }
 
