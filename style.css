@@ -1,51 +1,120 @@
-body {
-  text-align: center;
-  font-family: sans-serif;
-  background: #e9e2d0;
+body{
+  margin:0;
+  background: radial-gradient(circle at top, #f3ead7, #d9c7a3);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  font-family: "Arial", sans-serif;
+  user-select:none;
 }
 
-#board {
-  display: inline-block;
-  margin: 20px auto;
-  background: #d8b56a;
-  padding: 10px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+/* ===== 情報表示 ===== */
+#info{
+  margin:12px;
+  font-size:20px;
+  font-weight:bold;
+  color:#333;
+  text-shadow:0 1px 0 rgba(255,255,255,0.6);
 }
 
-.row {
-  display: flex;
+/* ===== ボード全体 ===== */
+#board{
+  display:flex;
+  flex-direction:column;
+  padding:14px;
+  background: linear-gradient(145deg, #d6ad6a, #b88745);
+  border-radius:16px;
+  box-shadow:
+    0 12px 25px rgba(0,0,0,0.35),
+    inset 0 2px 6px rgba(255,255,255,0.2);
 }
 
-.cell {
-  width: 34px;
-  height: 34px;
-  box-sizing: border-box;
-
-  /* ★重要：これ必須 */
-  position: relative;
-
-  border: 1px solid rgba(0,0,0,0.25);
+/* 行 */
+.row{
+  display:flex;
 }
 
-/* 石は完全中央固定 */
-.black, .white {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-
-  position: absolute;
-
-  /* ★ここがポイント */
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+/* マス */
+.cell{
+  width:34px;
+  height:34px;
+  border:1px solid rgba(0,0,0,0.25);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  position:relative;
+  transition: background 0.15s;
 }
 
-.black {
-  background: radial-gradient(circle at 30% 30%, #555, #000);
+/* ホバー */
+.cell:hover{
+  background:rgba(255,255,255,0.15);
 }
 
-.white {
-  background: radial-gradient(circle at 30% 30%, #fff, #ddd);
-  border: 1px solid #888;
+/* ===== 石 ===== */
+.black, .white{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  animation: pop 0.12s ease-out;
+  box-shadow:
+    inset 2px 2px 4px rgba(255,255,255,0.25),
+    inset -3px -3px 6px rgba(0,0,0,0.45),
+    0 3px 6px rgba(0,0,0,0.35);
+}
+
+/* 黒石 */
+.black{
+  background: radial-gradient(circle at 30% 30%, #444, #000);
+}
+
+/* 白石 */
+.white{
+  background: radial-gradient(circle at 30% 30%, #ffffff, #dcdcdc);
+}
+
+/* 置いた瞬間アニメ */
+@keyframes pop{
+  from{ transform: scale(0.2); opacity:0.3; }
+  to{ transform: scale(1); opacity:1; }
+}
+
+/* ===== 最後の手強調 ===== */
+.cell[style*="outline"]{
+  box-shadow: 0 0 10px 2px rgba(255,0,0,0.8);
+}
+
+/* ===== ボタン ===== */
+button{
+  margin-top:12px;
+  padding:8px 16px;
+  font-size:14px;
+  border:none;
+  border-radius:8px;
+  background:#333;
+  color:white;
+  cursor:pointer;
+  box-shadow:0 3px 8px rgba(0,0,0,0.3);
+  transition:0.2s;
+}
+
+button:hover{
+  background:#555;
+}
+
+/* ===== CPU思考中演出用（任意） ===== */
+#info{
+  min-height:28px;
+}
+
+/* 点滅（JSでCPU時にclass付けてもOK） */
+.thinking{
+  animation: blink 0.8s infinite;
+}
+
+@keyframes blink{
+  0%{ opacity:1; }
+  50%{ opacity:0.4; }
+  100%{ opacity:1; }
 }
