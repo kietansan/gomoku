@@ -17,7 +17,7 @@ function init(){
 }
 
 /* =========================
-   描画
+   描画（シンプル安定）
 ========================= */
 function draw(){
   boardEl.innerHTML = "";
@@ -54,94 +54,94 @@ function playerMove(x,y){
   playSound();
 
   if(checkWin(x,y,1)){
-    infoEl.textContent = "あなたの勝ち";
     gameOver = true;
-    draw();
     return;
   }
 
   draw();
-  setTimeout(cpuMove, 20);
+  setTimeout(cpuMove, 10);
 }
 
 /* =========================
-   CPU（3レイヤー構造）
-   ①即死防御
-   ②即勝ち
-   ③探索
+   CPUメイン
 ========================= */
 function cpuMove(){
   if(gameOver) return;
 
-  const start = performance.now();
-  const LIMIT = 10000;
-
-  /* ★① 即勝ちチェック */
-  const win = findWinningMove(2);
+  /* ① 即勝ち */
+  let win = findWinningMove(2);
   if(win){
     place(win);
     return;
   }
 
-  /* ★② 即死防御（最重要） */
-  const defense = findWinningMove(1);
-  if(defense){
-    place(defense);
+  /* ② 即死防御 */
+  let block = findWinningMove(1);
+  if(block){
+    place(block);
     return;
   }
 
-  /* ★③ 活三・4の脅威ブロック */
-  const urgent = findUrgentThreat();
-  if(urgent){
-    place(urgent);
+  /* ③ 2手勝ち（超重要） */
+  let forced = findTwoStepWin(2);
+  if(forced){
+    place(forced);
     return;
   }
 
-  /* ★④ 探索 */
-  const moves = getMovesThreatOrdered();
+  /* ④ 2手負け回避 */
+  let defend2 = findTwoStepWin(1);
+  if(defend2){
+    place(defend2);
+    return;
+  }
+
+  /* ⑤ 通常探索 */
+  const moves = getMoves();
 
   let best = moves[0];
+  let bestScore = -Infinity;
 
-  for(let depth=1; depth<=4; depth++){
+  for(const m of moves){
+    board[m.y][m.x] = 2;
 
-    let localBest = null;
-    let localScore = -Infinity;
+    const score = evaluateBoard();
 
-    for(const m of moves){
+    board[m.y][m.x] = 0;
 
-      board[m.y][m.x] = 2;
-
-      const score = minimax(
-        3,
-        depth-1,
-        -Infinity,
-        Infinity,
-        false,
-        start,
-        LIMIT
-      );
-
-      board[m.y][m.x] = 0;
-
-      if(score > localScore){
-        localScore = score;
-        localBest = m;
-      }
-
-      if(performance.now() - start > LIMIT) break;
+    if(score > bestScore){
+      bestScore = score;
+      best = m;
     }
-
-    if(localBest) best = localBest;
-    if(performance.now() - start > LIMIT) break;
   }
 
   place(best);
 }
 
 /* =========================
-   即勝ち・即死検出
+   即勝ち・即防御
 ========================= */
 function findWinningMove(p){
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x] !== 0) continue;
+
+      board[y][x] = p;
+      if(checkWin(x,y,p)){
+        board[y][x] = 0;
+        return {x,y};
+      }
+      board[y][x] = 0;
+    }
+  }
+  return null;
+}
+
+/* =========================
+   2手勝ち検出（核心）
+========================= */
+function findTwoStepWin(p){
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -150,12 +150,25 @@ function findWinningMove(p){
 
       board[y][x] = p;
 
-      if(checkWin(x,y,p)){
-        board[y][x] = 0;
-        return {x,y};
+      let winCount = 0;
+
+      const moves = getMoves();
+
+      for(const m of moves){
+        board[m.y][m.x] = p;
+
+        if(checkWin(m.x,m.y,p)){
+          winCount++;
+        }
+
+        board[m.y][m.x] = 0;
       }
 
       board[y][x] = 0;
+
+      if(winCount >= 2){
+        return {x,y};
+      }
     }
   }
 
@@ -163,199 +176,30 @@ function findWinningMove(p){
 }
 
 /* =========================
-   活三・危険形
+   候補手（中央寄り）
 ========================= */
-function findUrgentThreat(){
+function getMoves(){
+  const moves = [];
+  const c = SIZE/2;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
       if(board[y][x] !== 0) continue;
 
-      board[y][x] = 1;
-
-      if(isLiveThree(x,y,1)){
-        board[y][x] = 0;
-        return {x,y};
-      }
-
-      board[y][x] = 0;
-    }
-  }
-
-  return null;
-}
-
-/* 活三判定 */
-function isLiveThree(x,y,p){
-
-  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
-
-  for(const [dx,dy] of dirs){
-
-    let count=1, open=0;
-
-    let nx=x+dx, ny=y+dy;
-    while(board[ny]?.[nx]===p){
-      count++; nx+=dx; ny+=dy;
-    }
-    if(board[ny]?.[nx]===0) open++;
-
-    nx=x-dx; ny=y-dy;
-    while(board[ny]?.[nx]===p){
-      count++; nx-=dx; ny-=dy;
-    }
-    if(board[ny]?.[nx]===0) open++;
-
-    if(count===3 && open===2) return true;
-  }
-
-  return false;
-}
-
-/* =========================
-   αβ探索
-========================= */
-function minimax(player, depth, alpha, beta, isMax, start, limit){
-
-  if(depth===0) return evaluateBoard();
-
-  if(performance.now()-start > limit){
-    return evaluateBoard();
-  }
-
-  const moves = getMovesThreatOrdered();
-
-  if(isMax){
-    let best=-Infinity;
-
-    for(const m of moves){
-
-      board[m.y][m.x]=player;
-
-      if(checkWin(m.x,m.y,player)){
-        board[m.y][m.x]=0;
-        return 1000000;
-      }
-
-      const val = minimax(3-player, depth-1, alpha, beta, false, start, limit);
-
-      board[m.y][m.x]=0;
-
-      best=Math.max(best,val);
-      alpha=Math.max(alpha,val);
-
-      if(beta<=alpha) break;
-    }
-
-    return best;
-  }
-
-  else {
-    let best=Infinity;
-
-    for(const m of moves){
-
-      board[m.y][m.x]=player;
-
-      if(checkWin(m.x,m.y,player)){
-        board[m.y][m.x]=0;
-        return -1000000;
-      }
-
-      const val = minimax(3-player, depth-1, alpha, beta, true, start, limit);
-
-      board[m.y][m.x]=0;
-
-      best=Math.min(best,val);
-      beta=Math.min(beta,val);
-
-      if(beta<=alpha) break;
-    }
-
-    return best;
-  }
-}
-
-/* =========================
-   評価
-========================= */
-function evaluateBoard(){
-  let score=0;
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]===0) continue;
-
-      const p=board[y][x];
-      score+=evaluate(x,y,p)*(p===2?1:-1);
-    }
-  }
-
-  return score;
-}
-
-function evaluate(x,y,p){
-
-  let score=0;
-  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
-
-  for(const [dx,dy] of dirs){
-    const {count,openEnds}=getLine(x,y,dx,dy,p);
-    score+=patternScore(count,openEnds);
-  }
-
-  const c=SIZE/2;
-  score-=(Math.abs(x-c)+Math.abs(y-c))*6;
-
-  return score;
-}
-
-/* =========================
-   形評価
-========================= */
-function patternScore(count,open){
-
-  if(count>=5) return 1000000;
-
-  if(count===4) return 300000;
-
-  if(count===3 && open===2) return 120000;
-
-  if(count===3 && open===1) return 40000;
-
-  if(count===2 && open===2) return 5000;
-
-  return 0;
-}
-
-/* =========================
-   候補手（脅威優先）
-========================= */
-function getMovesThreatOrdered(){
-
-  const moves=[];
-  const c=SIZE/2;
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]!==0) continue;
-
-      let score=0;
+      let score = 0;
 
       for(let dy=-2;dy<=2;dy++){
         for(let dx=-2;dx<=2;dx++){
 
-          const v=board[y+dy]?.[x+dx];
+          const v = board[y+dy]?.[x+dx];
 
-          if(v===2) score+=3;
-          if(v===1) score+=5;
+          if(v===2) score += 2;
+          if(v===1) score += 3;
         }
       }
 
-      score-=(Math.abs(x-c)+Math.abs(y-c));
+      score -= (Math.abs(x-c)+Math.abs(y-c));
 
       moves.push({x,y,score});
     }
@@ -363,22 +207,76 @@ function getMovesThreatOrdered(){
 
   moves.sort((a,b)=>b.score-a.score);
 
-  return moves.slice(0,12);
+  return moves.slice(0,10);
+}
+
+/* =========================
+   評価（簡略だが実戦用）
+========================= */
+function evaluateBoard(){
+  let score = 0;
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x] === 0) continue;
+
+      const p = board[y][x];
+      score += evalPoint(x,y,p) * (p===2 ? 1 : -1);
+    }
+  }
+
+  return score;
+}
+
+/* 形評価 */
+function evalPoint(x,y,p){
+
+  let score = 0;
+  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+
+  for(const [dx,dy] of dirs){
+    const {count,open} = getLine(x,y,dx,dy,p);
+
+    if(count >= 5) score += 100000;
+    if(count === 4) score += 50000;
+    if(count === 3 && open === 2) score += 10000;
+    if(count === 3 && open === 1) score += 2000;
+    if(count === 2) score += 200;
+  }
+
+  return score;
+}
+
+/* ライン */
+function getLine(x,y,dx,dy,p){
+  let count=1, open=0;
+
+  let nx=x+dx, ny=y+dy;
+  while(board[ny]?.[nx]===p){
+    count++; nx+=dx; ny+=dy;
+  }
+  if(board[ny]?.[nx]===0) open++;
+
+  nx=x-dx; ny=y-dy;
+  while(board[ny]?.[nx]===p){
+    count++; nx-=dx; ny-=dy;
+  }
+  if(board[ny]?.[nx]===0) open++;
+
+  return {count,open};
 }
 
 /* =========================
    勝利判定
 ========================= */
 function checkWin(x,y,p){
-
   const dirs=[[1,0],[0,1],[1,1],[1,-1]];
 
   for(const [dx,dy] of dirs){
-
     let c=1;
 
     for(const d of [-1,1]){
-
       let nx=x+dx*d, ny=y+dy*d;
 
       while(board[ny]?.[nx]===p){
@@ -396,30 +294,29 @@ function checkWin(x,y,p){
    着手
 ========================= */
 function place(m){
-
   board[m.y][m.x]=2;
   playSound();
 
   if(checkWin(m.x,m.y,2)){
-    infoEl.textContent="CPUの勝ち";
     gameOver=true;
-  } else {
-    infoEl.textContent="あなたの番";
   }
 
   draw();
 }
 
-/* 音 */
+/* =========================
+   音
+========================= */
 function playSound(){
   sound.currentTime=0;
   sound.play().catch(()=>{});
 }
 
-/* リセット */
+/* =========================
+   リセット
+========================= */
 function resetGame(){
   init();
-  infoEl.textContent="あなたの番です";
 }
 
 init();
