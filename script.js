@@ -23,16 +23,9 @@ function init(){
   draw();
 }
 
-/* =========================
-   リセット
-========================= */
 function resetGame(){
   gameId++;
-  gameOver = false;
-  board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
-  lastMove = null;
-  infoEl.textContent = "";
-  draw();
+  init();
 }
 
 window.resetGame = resetGame;
@@ -84,11 +77,11 @@ function playerMove(x,y){
   setTimeout(() => {
     if(id !== gameId || gameOver) return;
     cpuMove(id);
-  }, 50);
+  }, 30);
 }
 
 /* =========================
-   CPUメイン（優先順修正版）
+   CPUメイン
 ========================= */
 function cpuMove(id){
   if(gameOver || id !== gameId) return;
@@ -99,12 +92,12 @@ function cpuMove(id){
   m = findWin(2);
   if(m) return place(m.x,m.y,2);
 
-  // ② プレイヤー即勝ち防御（5連）
+  // ② プレイヤー即勝ち防御
   m = findWin(1);
   if(m) return place(m.x,m.y,2);
 
-  // ★③ 3連・4連防御（最重要追加）
-  m = findThreeThreat(1);
+  // ③ ★3連・4連防御（修正版）
+  m = findDanger(1);
   if(m) return place(m.x,m.y,2);
 
   // ④ フォーク防御
@@ -115,13 +108,13 @@ function cpuMove(id){
   m = findFork(2);
   if(m) return place(m.x,m.y,2);
 
-  // ⑥ 4手読み探索
+  // ⑥ 4手読み
   m = searchBestMove(4);
   if(m) return place(m.x,m.y,2);
 }
 
 /* =========================
-   即勝ち判定
+   即勝ち
 ========================= */
 function findWin(p){
   for(let y=0;y<SIZE;y++){
@@ -143,9 +136,9 @@ function findWin(p){
 }
 
 /* =========================
-   ★3連・4連防御（核心）
+   ★危険判定（3連・4連統合）
 ========================= */
-function findThreeThreat(p){
+function findDanger(p){
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -155,16 +148,10 @@ function findThreeThreat(p){
       board[y][x]=p;
 
       for(const [dx,dy] of DIRS){
-        const {count,open} = line(x,y,dx,dy,p);
+        const {count} = line(x,y,dx,dy,p);
 
-        // ★3連は即防御
-        if(count === 3 && open > 0){
-          board[y][x]=0;
-          return {x,y};
-        }
-
-        // ★4連も即防御
-        if(count >= 4){
+        // ★ここが本体
+        if(count >= 3){
           board[y][x]=0;
           return {x,y};
         }
@@ -178,7 +165,7 @@ function findThreeThreat(p){
 }
 
 /* =========================
-   フォーク検出
+   フォーク
 ========================= */
 function findFork(p){
 
@@ -189,18 +176,16 @@ function findFork(p){
 
       board[y][x]=p;
 
-      let threat=0;
+      let t = 0;
 
       for(const [dx,dy] of DIRS){
-        const {count,open} = line(x,y,dx,dy,p);
-        if(count === 3 && open === 2) threat++;
+        const {count} = line(x,y,dx,dy,p);
+        if(count === 3) t++;
       }
 
       board[y][x]=0;
 
-      if(threat >= 2){
-        return {x,y};
-      }
+      if(t >= 2) return {x,y};
     }
   }
 
@@ -208,34 +193,34 @@ function findFork(p){
 }
 
 /* =========================
-   4手読み探索
+   4手読み
 ========================= */
 function searchBestMove(depth){
 
   const moves = getMoves().slice(0, 8);
 
-  let bestMove = null;
+  let best = null;
   let bestScore = -Infinity;
 
   for(const m of moves){
 
     board[m.y][m.x] = 2;
 
-    const score = -minimax(depth - 1, 1, -Infinity, Infinity);
+    const score = -minimax(depth-1, 1, -Infinity, Infinity);
 
     board[m.y][m.x] = 0;
 
     if(score > bestScore){
       bestScore = score;
-      bestMove = m;
+      best = m;
     }
   }
 
-  return bestMove;
+  return best;
 }
 
 /* =========================
-   ミニマックス（αβ軽量）
+   ミニマックス
 ========================= */
 function minimax(depth, turn, alpha, beta){
 
@@ -253,20 +238,20 @@ function minimax(depth, turn, alpha, beta){
 
       board[m.y][m.x] = 2;
 
-      const score = minimax(depth - 1, 1, alpha, beta);
+      const score = minimax(depth-1,1,alpha,beta);
 
       board[m.y][m.x] = 0;
 
-      best = Math.max(best, score);
-      alpha = Math.max(alpha, best);
+      best = Math.max(best,score);
+      alpha = Math.max(alpha,best);
 
-      if(beta <= alpha) break;
+      if(beta<=alpha) break;
     }
 
     return best;
   }
 
-  else {
+  else{
 
     let best = Infinity;
 
@@ -274,14 +259,14 @@ function minimax(depth, turn, alpha, beta){
 
       board[m.y][m.x] = 1;
 
-      const score = minimax(depth - 1, 0, alpha, beta);
+      const score = minimax(depth-1,0,alpha,beta);
 
       board[m.y][m.x] = 0;
 
-      best = Math.min(best, score);
-      beta = Math.min(beta, best);
+      best = Math.min(best,score);
+      beta = Math.min(beta,best);
 
-      if(beta <= alpha) break;
+      if(beta<=alpha) break;
     }
 
     return best;
@@ -289,12 +274,12 @@ function minimax(depth, turn, alpha, beta){
 }
 
 /* =========================
-   候補手生成
+   候補手
 ========================= */
 function getMoves(){
-  const moves = [];
 
-  const c = SIZE / 2;
+  const moves = [];
+  const c = SIZE/2;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -311,11 +296,10 @@ function getMoves(){
 
       if(!near) continue;
 
-      let score = 0;
-
-      score -= (Math.abs(x-c) + Math.abs(y-c));
-
-      moves.push({x,y,score});
+      moves.push({
+        x,y,
+        score: -(Math.abs(x-c)+Math.abs(y-c))
+      });
     }
   }
 
@@ -323,23 +307,23 @@ function getMoves(){
 }
 
 /* =========================
-   評価関数
+   評価
 ========================= */
 function evaluate(p){
-  let score = 0;
+  let score=0;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
-      if(board[y][x] !== p) continue;
+      if(board[y][x]!==p) continue;
 
       for(const [dx,dy] of DIRS){
-        const {count,open} = line(x,y,dx,dy,p);
+        const {count} = line(x,y,dx,dy,p);
 
-        if(count >= 5) score += 1000000;
-        else if(count === 4) score += 50000;
-        else if(count === 3 && open === 2) score += 8000;
-        else if(count === 2) score += 500;
+        if(count>=5) score+=1000000;
+        else if(count===4) score+=50000;
+        else if(count===3) score+=8000;
+        else if(count===2) score+=500;
       }
     }
   }
@@ -348,47 +332,48 @@ function evaluate(p){
 }
 
 /* =========================
-   ライン判定
+   ライン
 ========================= */
 function line(x,y,dx,dy,p){
-  let c = 1, open = 0;
+  let c=1;
 
-  let nx = x + dx, ny = y + dy;
-  while(board[ny]?.[nx] === p){
+  let nx=x+dx, ny=y+dy;
+  while(board[ny]?.[nx]===p){
     c++; nx+=dx; ny+=dy;
   }
-  if(board[ny]?.[nx] === 0) open++;
 
-  nx = x - dx; ny = y - dy;
-  while(board[ny]?.[nx] === p){
+  nx=x-dx; ny=y-dy;
+  while(board[ny]?.[nx]===p){
     c++; nx-=dx; ny-=dy;
   }
-  if(board[ny]?.[nx] === 0) open++;
 
-  return {count:c, open};
+  return {count:c};
 }
 
 /* =========================
    勝利判定
 ========================= */
 function checkWin(x,y,p){
+
   for(const [dx,dy] of DIRS){
-    let c = 1;
+
+    let c=1;
 
     for(const d of [-1,1]){
-      let nx = x + dx*d;
-      let ny = y + dy*d;
 
-      while(board[ny]?.[nx] === p){
+      let nx=x+dx*d;
+      let ny=y+dy*d;
+
+      while(board[ny]?.[nx]===p){
         c++;
-        nx += dx*d;
-        ny += dy*d;
+        nx+=dx*d;
+        ny+=dy*d;
       }
     }
 
-    if(c >= 5){
-      gameOver = true;
-      infoEl.textContent = (p === 2 ? "CPUの勝ち" : "あなたの勝ち");
+    if(c>=5){
+      gameOver=true;
+      infoEl.textContent = p===2 ? "CPUの勝ち" : "あなたの勝ち";
       return true;
     }
   }
@@ -400,10 +385,11 @@ function checkWin(x,y,p){
    着手
 ========================= */
 function place(x,y,p){
+
   if(gameOver) return;
 
-  board[y][x] = p;
-  lastMove = {x,y};
+  board[y][x]=p;
+  lastMove={x,y};
 
   playSound();
   draw();
@@ -415,7 +401,7 @@ function place(x,y,p){
    音
 ========================= */
 function playSound(){
-  sound.currentTime = 0;
+  sound.currentTime=0;
   sound.play().catch(()=>{});
 }
 
