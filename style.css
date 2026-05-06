@@ -13,12 +13,12 @@ body{
   background:#d8b56a;
 }
 
-/* 行 */
+/* 1行 */
 .row{
   display:flex;
 }
 
-/* ★ここが「交点」本体 */
+/* 交点ノード */
 .node{
   width:34px;
   height:34px;
@@ -29,7 +29,7 @@ body{
   background:#d8b56a;
 }
 
-/* 星（交点そのもの） */
+/* 星 */
 .node.star::after{
   content:"";
   width:6px;
@@ -37,12 +37,13 @@ body{
   background:#2b1a10;
   border-radius:50%;
   position:absolute;
+
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
 }
 
-/* 石（交点に完全固定） */
+/* 石 */
 .stone{
   width:24px;
   height:24px;
@@ -54,5 +55,11 @@ body{
   transform:translate(-50%,-50%);
 }
 
-.black{ background:black; }
-.white{ background:white; border:1px solid #999; }
+.black{
+  background:black;
+}
+
+.white{
+  background:white;
+  border:1px solid #999;
+}
