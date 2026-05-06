@@ -4,7 +4,7 @@ let board = [];
 let gameOver = false;
 
 let cpuTimer = null;
-let gameId = 0; // ★これが超重要（旧処理完全遮断）
+let gameId = 0;
 
 let lastMove = null;
 
@@ -26,18 +26,14 @@ function init(){
 }
 
 /* =========================
-   リセット（完全遮断版）
+   リセット（完全安定）
 ========================= */
 function resetGame(){
-
-  // ★すべての古いCPU処理を無効化
   gameId++;
-
   clearTimeout(cpuTimer);
   cpuTimer = null;
 
   gameOver = false;
-
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   lastMove = null;
 
@@ -46,7 +42,6 @@ function resetGame(){
   draw();
 }
 
-/* ★HTMLから呼べるように固定 */
 window.resetGame = resetGame;
 
 /* =========================
@@ -94,7 +89,7 @@ function playerMove(x,y){
   const id = gameId;
 
   cpuTimer = setTimeout(() => {
-    if(gameOver || id !== gameId) return; // ★完全遮断
+    if(id !== gameId || gameOver) return;
     cpuMove(id);
   }, 80);
 }
@@ -107,29 +102,29 @@ function cpuMove(id){
 
   let m;
 
-  // ★① 即勝ち
+  // ① 即勝ち
   m = findWin(2);
   if(m) return place(m.x,m.y,2);
 
-  // ★② 即防御
+  // ② 即防御
   m = findWin(1);
   if(m) return place(m.x,m.y,2);
 
-  // ★③ 脅威防御
+  // ③ フォーク防御
   m = findThreat(1);
   if(m) return place(m.x,m.y,2);
 
-  // ★④ フォーク
+  // ④ フォーク攻撃
   m = findFork(2);
   if(m) return place(m.x,m.y,2);
 
-  // ★⑤ 評価
+  // ⑤ 通常思考
   m = bestMove();
   return place(m.x,m.y,2);
 }
 
 /* =========================
-   即勝ち・防御
+   勝ち・防御
 ========================= */
 function findWin(p){
   for(let y=0;y<SIZE;y++){
@@ -214,11 +209,47 @@ function findFork(p){
 }
 
 /* =========================
-   評価
+   改良候補生成（重要）
+========================= */
+function getMoves(){
+  const moves=[];
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]) continue;
+
+      let near=false;
+      let score=0;
+
+      for(let dy=-2;dy<=2;dy++){
+        for(let dx=-2;dx<=2;dx++){
+          if(board[y+dy]?.[x+dx]){
+            near=true;
+            score++;
+          }
+        }
+      }
+
+      if(!near) continue;
+
+      // 中央寄り加点
+      const c = SIZE/2;
+      score -= (Math.abs(x-c)+Math.abs(y-c));
+
+      moves.push({x,y,score});
+    }
+  }
+
+  return moves.sort((a,b)=>b.score-a.score).slice(0,12);
+}
+
+/* =========================
+   最終手選択
 ========================= */
 function bestMove(){
 
-  const moves = getMoves().slice(0,6);
+  const moves = getMoves();
 
   let best=null;
   let bestScore=-Infinity;
@@ -241,7 +272,7 @@ function bestMove(){
 }
 
 /* =========================
-   リスク
+   相手リスク
 ========================= */
 function opponentRisk(p){
 
@@ -273,34 +304,6 @@ function opponentRisk(p){
   }
 
   return max;
-}
-
-/* =========================
-   候補
-========================= */
-function getMoves(){
-  const moves=[];
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]) continue;
-
-      let near=false;
-
-      for(let dy=-2;dy<=2;dy++){
-        for(let dx=-2;dx<=2;dx++){
-          if(board[y+dy]?.[x+dx]) near=true;
-        }
-      }
-
-      if(near || (x===7 && y===7)){
-        moves.push({x,y});
-      }
-    }
-  }
-
-  return moves.sort((a,b)=>moveScore(b)-moveScore(a)).slice(0,8);
 }
 
 /* =========================
