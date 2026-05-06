@@ -1,89 +1,94 @@
-const SIZE = 13;
-const CELL = 40;
-const MARGIN = 40;
-
-let board = [];
-let canvas, ctx;
-let turn = 1;
+// ====== 設定 ======
+const SIZE = 13;          // 盤面交点数
+const CELL = 40;          // セルサイズ
+const MARGIN = 40;        // 余白
+let board = [];           // 盤面配列
+let canvas, ctx;          // Canvas
+let turn = 1;             // 1=Player, 2=CPU
 let gameOver = false;
 let thinking = false;
-let audio;
+let audio;                // 石置き音
 
+// 星の位置
 const HOSHI = [[3,3],[3,9],[9,3],[9,9],[6,6]];
 
+// ====== 初期化 ======
 window.onload = () => {
   canvas = document.getElementById("board");
+  if(!canvas) { alert("Canvas取得失敗"); return; }
   ctx = canvas.getContext("2d");
   audio = document.getElementById("putSound");
 
   canvas.width = (SIZE-1)*CELL + MARGIN*2;
   canvas.height = (SIZE-1)*CELL + MARGIN*2;
 
-  board = Array.from({length: SIZE}, ()=>Array(SIZE).fill(0));
+  board = Array.from({length: SIZE},()=>Array(SIZE).fill(0));
 
   setInfo("あなたの番です");
   draw();
 };
 
-function setInfo(t){
-  document.getElementById("info").textContent = t;
+// ====== Info表示 ======
+function setInfo(txt){
+  document.getElementById("info").textContent = txt;
 }
 
+// ====== 盤面描画 ======
 function draw(){
-  ctx.fillStyle="#d8b56a";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // 背景（透明のため塗らない）
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  ctx.strokeStyle="#333";
-  for(let i=0; i<SIZE; i++){
+  // 線
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 1;
+  for(let i=0;i<SIZE;i++){
+    // 縦線
     ctx.beginPath();
-    ctx.moveTo(MARGIN + i*CELL, MARGIN);
-    ctx.lineTo(MARGIN + i*CELL, MARGIN + (SIZE-1)*CELL);
+    ctx.moveTo(MARGIN+i*CELL, MARGIN);
+    ctx.lineTo(MARGIN+i*CELL, MARGIN+(SIZE-1)*CELL);
     ctx.stroke();
-
+    // 横線
     ctx.beginPath();
-    ctx.moveTo(MARGIN, MARGIN + i*CELL);
-    ctx.lineTo(MARGIN + (SIZE-1)*CELL, MARGIN + i*CELL);
+    ctx.moveTo(MARGIN, MARGIN+i*CELL);
+    ctx.lineTo(MARGIN+(SIZE-1)*CELL, MARGIN+i*CELL);
     ctx.stroke();
   }
 
+  // 星
+  ctx.fillStyle="#222";
   for(const [x,y] of HOSHI){
     ctx.beginPath();
-    ctx.arc(MARGIN + x*CELL, MARGIN + y*CELL, 3, 0, Math.PI*2);
-    ctx.fillStyle="#222";
+    ctx.arc(MARGIN+x*CELL, MARGIN+y*CELL, 3, 0, Math.PI*2);
     ctx.fill();
   }
 
-  for(let y=0; y<SIZE; y++){
-    for(let x=0; x<SIZE; x++){
+  // 石
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
       if(board[y][x]) drawStone(x,y,board[y][x]);
     }
   }
 }
 
-function drawStone(x, y, p){
+// ====== 石描画 ======
+function drawStone(x,y,p){
   const cx = MARGIN + x*CELL;
   const cy = MARGIN + y*CELL;
   const g = ctx.createRadialGradient(cx-3, cy-3, 2, cx, cy, 14);
-  if(p===1){
-    g.addColorStop(0, "#666");
-    g.addColorStop(1, "#000");
-  } else {
-    g.addColorStop(0, "#fff");
-    g.addColorStop(1, "#aaa");
-  }
+  if(p===1){ g.addColorStop(0,"#666"); g.addColorStop(1,"#000"); }
+  else{ g.addColorStop(0,"#fff"); g.addColorStop(1,"#aaa"); }
   ctx.beginPath();
-  ctx.arc(cx, cy, 14, 0, Math.PI*2);
+  ctx.arc(cx,cy,14,0,Math.PI*2);
   ctx.fillStyle = g;
   ctx.fill();
 }
 
-document.addEventListener("click", (e) => {
+// ====== クリック処理 ======
+canvas.addEventListener("click", (e)=>{
   if(gameOver || turn!==1 || thinking) return;
-
   const rect = canvas.getBoundingClientRect();
   const x = Math.round((e.clientX - rect.left - MARGIN)/CELL);
   const y = Math.round((e.clientY - rect.top - MARGIN)/CELL);
-
   if(x<0 || y<0 || x>=SIZE || y>=SIZE) return;
   if(board[y][x]) return;
 
@@ -92,7 +97,7 @@ document.addEventListener("click", (e) => {
   playSound();
 
   if(checkWin(x,y,1)){
-    gameOver=true;
+    gameOver = true;
     setInfo("あなたの勝ち！");
     return;
   }
@@ -100,16 +105,17 @@ document.addEventListener("click", (e) => {
   turn = 2;
   thinking = true;
   setInfo("CPU思考中...");
-  setTimeout(cpuMove, 10);
+  setTimeout(cpuMove, 50);
 });
 
+// ====== 石置き音 ======
 function playSound(){
   if(!audio) return;
-  audio.currentTime = 0;
+  audio.currentTime=0;
   audio.play().catch(()=>{});
 }
 
-/* ================= CPU ================= */
+// ====== CPU思考 ======
 function cpuMove(){
   if(gameOver) return;
 
@@ -125,27 +131,22 @@ function cpuMove(){
     }
   }
 
-  if(best) place(best,2);
+  if(best) placeStone(best,2);
 }
 
+// ====== 評価関数（正規化AI順序①～⑦） ======
 function evaluateMove(pos,p){
   const opp = (p===1)?2:1;
 
   // ①即勝ち
-  board[pos.y][pos.x]=p;
-  if(checkWin(pos.x,pos.y,p)){
-    board[pos.y][pos.x]=0;
-    return 100000;
-  }
-  board[pos.y][pos.x]=0;
+  board[pos.y][pos.x] = p;
+  if(checkWin(pos.x,pos.y,p)){ board[pos.y][pos.x]=0; return 100000; }
+  board[pos.y][pos.x] = 0;
 
-  // ②即死防御（4連）
-  board[pos.y][pos.x]=opp;
-  if(checkWin(pos.x,pos.y,opp)){
-    board[pos.y][pos.x]=0;
-    return 90000;
-  }
-  board[pos.y][pos.x]=0;
+  // ②即死防御(4連)
+  board[pos.y][pos.x] = opp;
+  if(checkWin(pos.x,pos.y,opp)){ board[pos.y][pos.x]=0; return 90000; }
+  board[pos.y][pos.x] = 0;
 
   // ③両端空き3防御
   if(isDoubleEnded3(pos,opp)) return 80000;
@@ -156,7 +157,7 @@ function evaluateMove(pos,p){
   // ⑤ダブル脅威防御
   if(isTwoThreats(pos,opp)) return 60000;
 
-  // ⑥候補生成周囲優先
+  // ⑥候補生成（周囲優先）
   let score = evaluateLinePotential(pos,p);
 
   // ⑦簡易3手先先読み
@@ -165,6 +166,7 @@ function evaluateMove(pos,p){
   return score;
 }
 
+// ====== 両端空き3チェック ======
 function isDoubleEnded3(pos,p){
   const dirs=[[1,0],[0,1],[1,1],[1,-1]];
   for(const [dx,dy] of dirs){
@@ -186,6 +188,7 @@ function isDoubleEnded3(pos,p){
   return false;
 }
 
+// ====== ダブル脅威チェック ======
 function isTwoThreats(pos,p){
   let cnt=0;
   const dirs=[[1,0],[0,1],[1,1],[1,-1]];
@@ -206,6 +209,7 @@ function isTwoThreats(pos,p){
   return cnt>=2;
 }
 
+// ====== ライン評価 ======
 function evaluateLinePotential(pos,p){
   let score=0;
   const dirs=[[1,0],[0,1],[1,1],[1,-1]];
@@ -224,41 +228,4 @@ function evaluateLinePotential(pos,p){
   return score;
 }
 
-// 簡易3手先評価（周囲1手のみ）
-function simulateNext(pos,p){
-  let score=0;
-  board[pos.y][pos.x]=p;
-  const opp = (p===1)?2:1;
-  const candidates = getAllEmptyCells();
-  for(const next of candidates){
-    board[next.y][next.x]=opp;
-    if(checkWin(next.x,next.y,opp)) score -= 500;
-    board[next.y][next.x]=0;
-  }
-  board[pos.y][pos.x]=0;
-  return score;
-}
-
-function getAllEmptyCells(){
-  const list=[];
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(!board[y][x]) list.push({x,y});
-    }
-  }
-  return list;
-}
-
-function place(pos,p){
-  board[pos.y][pos.x]=p;
-  draw();
-  playSound();
-
-  if(checkWin(pos.x,pos.y,p)){
-    gameOver=true;
-    setInfo(p===1?"あなたの勝ち！":"CPUの勝ち！");
-  }
-
-  turn=1;
-  thinking=false;
-  if(!game
+// ====== 簡易3手先先読み ======
