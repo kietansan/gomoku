@@ -1,4 +1,5 @@
 const SIZE = 15;
+
 let board = [];
 let gameOver = false;
 
@@ -6,137 +7,186 @@ const boardEl = document.getElementById("board");
 const infoEl = document.getElementById("info");
 const sound = document.getElementById("sound");
 
-/* 初期化 */
-function init(){
-  board = Array.from({length: SIZE}, ()=>Array(SIZE).fill(0));
+/* ======================
+   初期化
+====================== */
+function init() {
+  board = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
   gameOver = false;
   draw();
 }
 
-/* 描画 */
-function draw(){
-  boardEl.innerHTML = "";
+/* ======================
+   描画（最重要・安定版）
+====================== */
+function draw() {
+  const el = document.getElementById("board");
 
-  for(let y=0;y<SIZE;y++){
+  if (!el) {
+    console.error("❌ board要素が見つかりません");
+    return;
+  }
+
+  el.innerHTML = "";
+
+  for (let y = 0; y < SIZE; y++) {
     const row = document.createElement("div");
-    row.className = "row";
+    row.style.display = "flex";
 
-    for(let x=0;x<SIZE;x++){
+    for (let x = 0; x < SIZE; x++) {
       const cell = document.createElement("div");
-      cell.className = "cell";
 
-      if(board[y][x]===1) cell.classList.add("black");
-      if(board[y][x]===2) cell.classList.add("white");
+      cell.style.width = "30px";
+      cell.style.height = "30px";
+      cell.style.border = "1px solid #999";
+      cell.style.boxSizing = "border-box";
+      cell.style.cursor = "pointer";
+      cell.style.display = "flex";
+      cell.style.alignItems = "center";
+      cell.style.justifyContent = "center";
 
-      cell.onclick = () => playerMove(x,y);
+      if (board[y][x] === 1) {
+        cell.style.background = "black";
+        cell.style.borderRadius = "50%";
+      }
+
+      if (board[y][x] === 2) {
+        cell.style.background = "white";
+        cell.style.borderRadius = "50%";
+        cell.style.border = "2px solid #333";
+      }
+
+      cell.onclick = () => playerMove(x, y);
+
       row.appendChild(cell);
     }
 
-    boardEl.appendChild(row);
+    el.appendChild(row);
   }
 }
 
-/* プレイヤー */
-function playerMove(x,y){
-  if(gameOver || board[y][x]!==0) return;
+/* ======================
+   プレイヤー
+====================== */
+function playerMove(x, y) {
+  if (gameOver || board[y][x] !== 0) return;
 
-  board[y][x]=1;
+  board[y][x] = 1;
   playSound();
 
-  if(checkWin(x,y,1)){
-    infoEl.textContent="あなたの勝ち";
-    gameOver=true;
+  if (checkWin(x, y, 1)) {
+    infoEl.textContent = "あなたの勝ち";
+    gameOver = true;
     draw();
     return;
   }
 
   draw();
-  setTimeout(cpuMove,100);
+  setTimeout(cpuMove, 50);
 }
 
-/* CPU（超シンプル安定版） */
-function cpuMove(){
-  if(gameOver) return;
+/* ======================
+   CPU（最低限安定AI）
+====================== */
+function cpuMove() {
+  if (gameOver) return;
 
   const moves = getMoves();
-  const m = moves[0];
+  const move = moves[0];
 
-  board[m.y][m.x]=2;
+  board[move.y][move.x] = 2;
   playSound();
 
-  if(checkWin(m.x,m.y,2)){
-    infoEl.textContent="CPUの勝ち";
-    gameOver=true;
+  if (checkWin(move.x, move.y, 2)) {
+    infoEl.textContent = "CPUの勝ち";
+    gameOver = true;
   } else {
-    infoEl.textContent="あなたの番";
+    infoEl.textContent = "あなたの番";
   }
 
   draw();
 }
 
-/* 勝利判定 */
-function checkWin(x,y,p){
-  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
+/* ======================
+   勝利判定
+====================== */
+function checkWin(x, y, p) {
+  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
 
-  for(const [dx,dy] of dirs){
-    let count=1;
+  for (let [dx, dy] of dirs) {
+    let count = 1;
 
-    for(let d=-1;d<=1;d+=2){
-      let nx=x+dx*d;
-      let ny=y+dy*d;
+    for (let d = -1; d <= 1; d += 2) {
+      let nx = x + dx * d;
+      let ny = y + dy * d;
 
-      while(board[ny]?.[nx]===p){
+      while (board[ny]?.[nx] === p) {
         count++;
-        nx+=dx*d;
-        ny+=dy*d;
+        nx += dx * d;
+        ny += dy * d;
       }
     }
 
-    if(count>=5) return true;
+    if (count >= 5) return true;
   }
+
   return false;
 }
 
-/* 候補手（安定版） */
-function getMoves(){
-  const moves=[];
-  const center = SIZE/2;
+/* ======================
+   候補手（超安定版）
+====================== */
+function getMoves() {
+  const moves = [];
+  const center = SIZE / 2;
 
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(board[y][x]!==0) continue;
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      if (board[y][x] !== 0) continue;
 
-      let near=false;
+      let near = false;
 
-      for(let dy=-1;dy<=1;dy++){
-        for(let dx=-1;dx<=1;dx++){
-          if(board[y+dy]?.[x+dx]!==0) near=true;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (board[y + dy]?.[x + dx] !== 0) {
+            near = true;
+          }
         }
       }
 
-      if(!near) continue;
+      if (!near) continue;
 
-      let score = -Math.abs(x-center)-Math.abs(y-center);
+      const score =
+        -Math.abs(x - center) -
+        Math.abs(y - center);
 
-      moves.push({x,y,score});
+      moves.push({ x, y, score });
     }
   }
 
-  moves.sort((a,b)=>b.score-a.score);
+  moves.sort((a, b) => b.score - a.score);
 
-  return moves.length ? moves : [{x:7,y:7}];
+  return moves.length ? moves : [{ x: 7, y: 7 }];
 }
 
-/* 音 */
-function playSound(){
-  sound.currentTime=0;
-  sound.play().catch(()=>{});
+/* ======================
+   音
+====================== */
+function playSound() {
+  if (!sound) return;
+  sound.currentTime = 0;
+  sound.play().catch(() => {});
 }
 
-/* リセット */
-function resetGame(){
+/* ======================
+   リセット
+====================== */
+function resetGame() {
   init();
-  infoEl.textContent="あなたの番です";
+  if (infoEl) infoEl.textContent = "あなたの番";
 }
 
+/* ======================
+   起動
+====================== */
 init();
