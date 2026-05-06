@@ -31,9 +31,9 @@ function draw(){
       const cell = document.createElement("div");
       cell.className = "cell";
 
-      if(board[y][x] !== 0){
+      if(board[y][x]){
         const stone = document.createElement("div");
-        stone.className = board[y][x] === 1 ? "black" : "white";
+        stone.className = board[y][x]===1?"black":"white";
         cell.appendChild(stone);
       }
 
@@ -49,50 +49,88 @@ function draw(){
    プレイヤー
 ========================= */
 function playerMove(x,y){
-  if(gameOver || board[y][x] !== 0) return;
+  if(gameOver || board[y][x]) return;
 
-  board[y][x] = 1;
+  board[y][x]=1;
   playSound();
 
   if(checkWin(x,y,1)){
-    gameOver = true;
-    infoEl.textContent = "あなたの勝ち";
+    gameOver=true;
+    infoEl.textContent="あなたの勝ち";
     draw();
     return;
   }
 
   draw();
-  setTimeout(cpuMove, 10);
+  setTimeout(cpuMove, 5);
 }
 
 /* =========================
-   CPU
+   CPU（超強化）
 ========================= */
 function cpuMove(){
   if(gameOver) return;
 
-  /* ★① CPU即勝ち */
-  let win = findWinningMove(2);
+  /* ★① 即勝ち */
+  let win = findWin(2);
   if(win){
     place(win);
-
     if(checkWin(win.x,win.y,2)){
-      gameOver = true;
-      infoEl.textContent = "CPUの勝ち";
+      gameOver=true;
+      infoEl.textContent="CPUの勝ち";
     }
-
     return;
   }
 
-  /* ★② 4連・3連・即死防御 */
-  let block = findStrongThreat(1);
+  /* ★② 即死防御 */
+  let block = findWin(1);
   if(block){
     place(block);
     return;
   }
 
-  /* ★③ 攻撃優先 */
-  let best = getBestMove();
+  /* ★③ 2手必勝（攻撃） */
+  let attack = findTwoStepWin(2);
+  if(attack){
+    place(attack);
+    return;
+  }
+
+  /* ★④ 2手必敗回避 */
+  let defend = findTwoStepWin(1);
+  if(defend){
+    place(defend);
+    return;
+  }
+
+  /* ★⑤ ダブルスレット作成 */
+  let ds = findDoubleThreat(2);
+  if(ds){
+    place(ds);
+    return;
+  }
+
+  /* ★⑥ 通常探索（強化評価） */
+  let best = null;
+  let bestScore = -Infinity;
+
+  const moves = getMoves();
+
+  for(const m of moves){
+
+    board[m.y][m.x]=2;
+
+    const score =
+      evaluate(m.x,m.y) +
+      lookAhead(m.x,m.y,1); // ★2手読み
+
+    board[m.y][m.x]=0;
+
+    if(score>bestScore){
+      bestScore=score;
+      best=m;
+    }
+  }
 
   place(best);
 }
@@ -100,46 +138,46 @@ function cpuMove(){
 /* =========================
    即勝ち・即防御
 ========================= */
-function findWinningMove(p){
+function findWin(p){
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
-      if(board[y][x] !== 0) continue;
+      if(board[y][x]) continue;
 
-      board[y][x] = p;
+      board[y][x]=p;
       if(checkWin(x,y,p)){
-        board[y][x] = 0;
+        board[y][x]=0;
         return {x,y};
       }
-      board[y][x] = 0;
+      board[y][x]=0;
     }
   }
   return null;
 }
 
 /* =========================
-   強化防御（ここが核心）
-   4連・3連・即死全部対応
+   2手必勝・必敗
 ========================= */
-function findStrongThreat(p){
+function findTwoStepWin(p){
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
-      if(board[y][x] !== 0) continue;
+      if(board[y][x]) continue;
 
-      board[y][x] = p;
+      board[y][x]=p;
 
-      if(
-        checkWin(x,y,p) ||        // 即死
-        isFour(x,y,p) ||          // 4連
-        isOpenThree(x,y,p)        // 活三
-      ){
-        board[y][x] = 0;
-        return {x,y};
+      let winCount=0;
+
+      for(const m of getMoves()){
+        board[m.y][m.x]=p;
+        if(checkWin(m.x,m.y,p)) winCount++;
+        board[m.y][m.x]=0;
       }
 
-      board[y][x] = 0;
+      board[y][x]=0;
+
+      if(winCount>=2) return {x,y};
     }
   }
 
@@ -147,48 +185,114 @@ function findStrongThreat(p){
 }
 
 /* =========================
-   4連判定（強化版）
+   ダブルスレット（超重要）
 ========================= */
-function isFour(x,y,p){
-  return getMaxLine(x,y,p) === 4;
-}
+function findDoubleThreat(p){
 
-/* =========================
-   活三判定
-========================= */
-function isOpenThree(x,y,p){
-  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
 
-  for(const [dx,dy] of dirs){
-    const {count,open}=getLine(x,y,dx,dy,p);
-    if(count===3 && open===2) return true;
+      if(board[y][x]) continue;
+
+      board[y][x]=p;
+
+      let threat=0;
+
+      for(const [dx,dy] of [[1,0],[0,1],[1,1],[1,-1]]){
+        const {count,open}=getLine(x,y,dx,dy,p);
+        if(count===3 && open===2) threat++;
+      }
+
+      board[y][x]=0;
+
+      if(threat>=2) return {x,y};
+    }
   }
 
-  return false;
+  return null;
 }
 
 /* =========================
-   ライン最大長
+   候補手
 ========================= */
-function getMaxLine(x,y,p){
-  let max=0;
-  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
+function getMoves(){
+  const moves=[];
+  const c=SIZE/2;
 
-  for(const [dx,dy] of dirs){
-    const {count}=getLine(x,y,dx,dy,p);
-    max=Math.max(max,count);
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]) continue;
+
+      let score=0;
+
+      for(let dy=-2;dy<=2;dy++){
+        for(let dx=-2;dx<=2;dx++){
+          const v=board[y+dy]?.[x+dx];
+          if(v===2) score+=3;
+          if(v===1) score+=4;
+        }
+      }
+
+      score-=Math.abs(x-c)+Math.abs(y-c);
+
+      moves.push({x,y,score});
+    }
   }
 
-  return max;
+  moves.sort((a,b)=>b.score-a.score);
+  return moves.slice(0,12);
 }
 
 /* =========================
-   ライン計算
+   2手先読み（超重要）
+========================= */
+function lookAhead(x,y,depth){
+
+  if(depth===0) return 0;
+
+  let score=0;
+
+  for(const m of getMoves()){
+
+    board[m.y][m.x]=2;
+
+    if(checkWin(m.x,m.y,2)) score+=50000;
+
+    score += evaluate(m.x,m.y);
+
+    board[m.y][m.x]=0;
+  }
+
+  return score;
+}
+
+/* =========================
+   評価
+========================= */
+function evaluate(x,y){
+  let score=0;
+
+  for(const [dx,dy] of [[1,0],[0,1],[1,1],[1,-1]]){
+
+    const {count,open}=getLine(x,y,dx,dy,2);
+
+    if(count>=5) score+=100000;
+    else if(count===4) score+=40000;
+    else if(count===3 && open===2) score+=12000;
+    else if(count===2) score+=1500;
+  }
+
+  return score;
+}
+
+/* =========================
+   ライン
 ========================= */
 function getLine(x,y,dx,dy,p){
-  let count=1, open=0;
+  let count=1,open=0;
 
-  let nx=x+dx, ny=y+dy;
+  let nx=x+dx,ny=y+dy;
   while(board[ny]?.[nx]===p){
     count++; nx+=dx; ny+=dy;
   }
@@ -204,69 +308,14 @@ function getLine(x,y,dx,dy,p){
 }
 
 /* =========================
-   攻撃AI（シンプル強化）
-========================= */
-function getBestMove(){
-
-  let best=null;
-  let bestScore=-Infinity;
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]!==0) continue;
-
-      board[y][x]=2;
-
-      let score = evaluate(x,y);
-
-      board[y][x]=0;
-
-      if(score>bestScore){
-        bestScore=score;
-        best={x,y};
-      }
-    }
-  }
-
-  return best;
-}
-
-/* =========================
-   評価関数
-========================= */
-function evaluate(x,y){
-  let score=0;
-
-  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
-
-  for(const [dx,dy] of dirs){
-    const {count,open}=getLine(x,y,dx,dy,2);
-
-    if(count>=5) score+=100000;
-    else if(count===4) score+=50000;
-    else if(count===3 && open===2) score+=10000;
-    else if(count===2) score+=1000;
-  }
-
-  const c=SIZE/2;
-  score -= (Math.abs(x-c)+Math.abs(y-c))*3;
-
-  return score;
-}
-
-/* =========================
    勝利判定
 ========================= */
 function checkWin(x,y,p){
-  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
-
-  for(const [dx,dy] of dirs){
+  for(const [dx,dy] of [[1,0],[0,1],[1,1],[1,-1]]){
     let c=1;
 
     for(const d of [-1,1]){
-      let nx=x+dx*d, ny=y+dy*d;
-
+      let nx=x+dx*d,ny=y+dy*d;
       while(board[ny]?.[nx]===p){
         c++; nx+=dx*d; ny+=dy*d;
       }
@@ -274,12 +323,11 @@ function checkWin(x,y,p){
 
     if(c>=5) return true;
   }
-
   return false;
 }
 
 /* =========================
-   着手処理
+   着手
 ========================= */
 function place(m){
   board[m.y][m.x]=2;
@@ -287,17 +335,13 @@ function place(m){
   draw();
 }
 
-/* =========================
-   音
-========================= */
+/* 音 */
 function playSound(){
   sound.currentTime=0;
   sound.play().catch(()=>{});
 }
 
-/* =========================
-   リセット
-========================= */
+/* リセット */
 function resetGame(){
   init();
 }
