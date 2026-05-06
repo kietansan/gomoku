@@ -19,8 +19,8 @@ window.onload = () => {
   ctx = canvas.getContext("2d");
   audio = document.getElementById("putSound");
 
-  canvas.width = SIZE * CELL;
-  canvas.height = SIZE * CELL;
+  canvas.width = (SIZE - 1) * CELL + MARGIN * 2;
+  canvas.height = (SIZE - 1) * CELL + MARGIN * 2;
 
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
 
@@ -43,6 +43,7 @@ function draw(){
   ctx.strokeStyle="#333";
 
   for(let i=0;i<SIZE;i++){
+
     ctx.beginPath();
     ctx.moveTo(MARGIN+i*CELL, MARGIN);
     ctx.lineTo(MARGIN+i*CELL, MARGIN+(SIZE-1)*CELL);
@@ -120,7 +121,7 @@ document.addEventListener("click",(e)=>{
 });
 
 /* =========================
-   CPU（完全シンプル版）
+   CPU
 ========================= */
 function cpuMove(){
 
@@ -134,15 +135,80 @@ function cpuMove(){
   move = findWin(1);
   if(move) return place(move,2);
 
-  // ③ ランダム＋隣接
-  move = findRandomMove();
+  // ③ ★3連防御（復活：両端なし対応）
+  move = findOpenThreeBlock(1);
+  if(move) return place(move,2);
+
+  // ④ ランダム（軽量）
+  move = randomMove();
   place(move,2);
 
   setInfo("あなたの番です");
 }
 
 /* =========================
-   勝ち手探索
+   ★3連検出＆防御（本体）
+   ●●●・ / ・●●●・ を検出
+========================= */
+function findOpenThree(player){
+
+  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x] !== player) continue;
+
+      for(const [dx,dy] of dirs){
+
+        let count = 1;
+        let openEnds = 0;
+
+        // 正方向
+        let i=1;
+        while(board[y+dy*i]?.[x+dx*i]===player){
+          count++; i++;
+        }
+        if(board[y+dy*i]?.[x+dx*i]===0) openEnds++;
+
+        // 逆方向
+        i=1;
+        while(board[y-dy*i]?.[x-dx*i]===player){
+          count++; i++;
+        }
+        if(board[y-dy*i]?.[x-dx*i]===0) openEnds++;
+
+        // ★3連＋片側以上空き（両端なし含む）
+        if(count===3 && openEnds>=1){
+          return findBlockAtLine(x,y,dx,dy);
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/* =========================
+   そのライン上の防御手を探す
+========================= */
+function findBlockAtLine(x,y,dx,dy){
+
+  for(let i=-3;i<=3;i++){
+
+    const nx = x + dx*i;
+    const ny = y + dy*i;
+
+    if(board[ny]?.[nx]===0){
+      return {x:nx,y:ny};
+    }
+  }
+
+  return null;
+}
+
+/* =========================
+   勝ち手
 ========================= */
 function findWin(p){
 
@@ -166,9 +232,9 @@ function findWin(p){
 }
 
 /* =========================
-   ランダム（近く優先）
+   ランダム
 ========================= */
-function findRandomMove(){
+function randomMove(){
 
   const list=[];
 
@@ -190,7 +256,6 @@ function hasNeighbor(x,y){
 
   for(let dy=-1;dy<=1;dy++){
     for(let dx=-1;dx<=1;dx++){
-
       if(board[y+dy]?.[x+dx]) return true;
     }
   }
@@ -239,9 +304,7 @@ function place(pos,p){
   }
 }
 
-/* =========================
-   音
-========================= */
+/* 音 */
 function playSound(){
   if(!audio) return;
   audio.currentTime=0;
