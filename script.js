@@ -7,6 +7,7 @@ let lastMove = null;
 
 const boardEl = document.getElementById("board");
 const infoEl = document.getElementById("info");
+const sound = document.getElementById("sound");
 
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
@@ -19,6 +20,13 @@ function init(){
   draw();
 }
 window.resetGame = init;
+
+/* 音 */
+function playSound(){
+  if(!sound) return;
+  sound.currentTime = 0;
+  sound.play().catch(()=>{});
+}
 
 /* 星 */
 function isStar(x,y){
@@ -36,36 +44,30 @@ function draw(){
   const grid = document.createElement("div");
   grid.className = "grid";
 
-  /* ===== 線（盤全体） ===== */
   const lines = document.createElement("div");
   lines.className = "lines";
 
-  // 横線
+  /* ★端ズレ修正：中心ではなく交点基準 */
   for(let i=0;i<SIZE;i++){
-    const l=document.createElement("div");
-    l.className="h-line";
-    l.style.top = (i*CELL + CELL/2)+"px";
-    lines.appendChild(l);
-  }
+    const h=document.createElement("div");
+    h.className="h-line";
+    h.style.top = (i*CELL)+"px";
+    lines.appendChild(h);
 
-  // 縦線
-  for(let i=0;i<SIZE;i++){
-    const l=document.createElement("div");
-    l.className="v-line";
-    l.style.left = (i*CELL + CELL/2)+"px";
-    lines.appendChild(l);
+    const v=document.createElement("div");
+    v.className="v-line";
+    v.style.left = (i*CELL)+"px";
+    lines.appendChild(v);
   }
 
   grid.appendChild(lines);
 
-  /* ===== ノード ===== */
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
       const node = document.createElement("div");
       node.className="node";
 
-      // ★これ重要（Grid配置）
       node.style.gridColumn = x+1;
       node.style.gridRow = y+1;
 
@@ -89,6 +91,7 @@ function draw(){
         if(gameOver || board[y][x]) return;
 
         place(x,y,1);
+
         if(!gameOver){
           infoEl.textContent="CPU思考中...";
           setTimeout(cpuMove,50);
@@ -106,6 +109,9 @@ function draw(){
 function place(x,y,p){
   board[y][x]=p;
   lastMove={x,y};
+
+  playSound();
+
   draw();
 
   if(checkWin(x,y,p)){
@@ -131,8 +137,7 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* ===== CPU（4手読み） ===== */
-
+/* CPU */
 function cpuMove(){
   const move = minimax(4,true,-Infinity,Infinity).move;
   if(move) place(move.x,move.y,2);
@@ -171,7 +176,6 @@ function minimax(depth,isMax,alpha,beta){
   }
 }
 
-/* 候補 */
 function getMoves(){
   const moves=[];
   for(let y=0;y<SIZE;y++){
@@ -190,7 +194,6 @@ function getMoves(){
   return moves.length?moves:[{x:6,y:6}];
 }
 
-/* 評価（星込み） */
 function evaluate(){
   let score=0;
 
