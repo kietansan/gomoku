@@ -5,6 +5,7 @@ const MARGIN = 40;
 
 let board = [];
 let canvas, ctx;
+let audio;
 
 const HOSHI = [
   [3,3],[3,9],
@@ -17,6 +18,8 @@ window.onload = () => {
   canvas = document.getElementById("board");
   ctx = canvas.getContext("2d");
 
+  audio = document.getElementById("putSound");
+
   canvas.width = GRID * CELL + MARGIN * 2;
   canvas.height = GRID * CELL + MARGIN * 2;
 
@@ -26,32 +29,32 @@ window.onload = () => {
 };
 
 /* =========================
-   木目（リアルノイズ）
+   木目背景（安定版）
 ========================= */
-function drawWoodBackground(){
+function drawWood(){
 
   const w = canvas.width;
   const h = canvas.height;
 
   const img = ctx.createImageData(w,h);
-  const data = img.data;
+  const d = img.data;
 
   for(let y=0;y<h;y++){
     for(let x=0;x<w;x++){
 
       const grain =
-        Math.sin(x * 0.08) * 10 +
-        Math.sin(x * 0.02) * 20 +
-        (Math.random()-0.5)*5;
+        Math.sin(x*0.08)*10 +
+        Math.sin(x*0.02)*20 +
+        (Math.random()-0.5)*4;
 
       let base = 216 + grain;
 
       const i = (y*w + x)*4;
 
-      data[i]   = base;   // R
-      data[i+1] = 180;    // G
-      data[i+2] = 106;    // B
-      data[i+3] = 255;    // A
+      d[i]   = base;
+      d[i+1] = 180;
+      d[i+2] = 106;
+      d[i+3] = 255;
     }
   }
 
@@ -59,14 +62,12 @@ function drawWoodBackground(){
 }
 
 /* =========================
-   描画メイン
+   全描画
 ========================= */
 function draw(){
 
-  // 木目背景
-  drawWoodBackground();
+  drawWood();
 
-  // 盤線
   ctx.strokeStyle = "#333";
   ctx.lineWidth = 1;
 
@@ -83,7 +84,7 @@ function draw(){
     ctx.stroke();
   }
 
-  // 星（5点）
+  // 星
   for(const [x,y] of HOSHI){
 
     ctx.beginPath();
@@ -158,7 +159,31 @@ document.addEventListener("click",(e)=>{
   board[y][x]=1;
 
   draw();
+
+  playSound();
 });
+
+/* =========================
+   音（完全安定版）
+========================= */
+function playSound(){
+
+  if(!audio){
+    console.log("audio未取得");
+    return;
+  }
+
+  audio.pause();
+  audio.currentTime = 0;
+
+  const p = audio.play();
+
+  if(p !== undefined){
+    p.catch(err=>{
+      console.log("音再生失敗:", err);
+    });
+  }
+}
 
 /* リセット */
 window.resetGame = () => {
