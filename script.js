@@ -1,12 +1,11 @@
 const SIZE = 13;
-const GRID = 12;
 const CELL = 40;
 const MARGIN = 40;
 
 let board = [];
 let canvas, ctx;
-let audio;
 let gameOver = false;
+let audio;
 
 const HOSHI = [
   [3,3],[3,9],
@@ -18,11 +17,10 @@ window.onload = () => {
 
   canvas = document.getElementById("board");
   ctx = canvas.getContext("2d");
-
   audio = document.getElementById("putSound");
 
-  canvas.width = GRID * CELL + MARGIN * 2;
-  canvas.height = GRID * CELL + MARGIN * 2;
+  canvas.width = SIZE * CELL;
+  canvas.height = SIZE * CELL;
 
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
 
@@ -30,35 +28,8 @@ window.onload = () => {
   draw();
 };
 
-/* =========================
-   UI
-========================= */
-function setInfo(text){
-  document.getElementById("info").textContent = text;
-}
-
-/* =========================
-   木目（軽量）
-========================= */
-function drawWood(){
-
-  const w = canvas.width;
-  const h = canvas.height;
-
-  const img = ctx.createImageData(w,h);
-  const d = img.data;
-
-  for(let i=0;i<d.length;i+=4){
-
-    const g = 200 + Math.random()*25;
-
-    d[i]=g;
-    d[i+1]=170;
-    d[i+2]=110;
-    d[i+3]=255;
-  }
-
-  ctx.putImageData(img,0,0);
+function setInfo(t){
+  document.getElementById("info").textContent = t;
 }
 
 /* =========================
@@ -66,28 +37,26 @@ function drawWood(){
 ========================= */
 function draw(){
 
-  drawWood();
+  ctx.fillStyle = "#d8b56a";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
 
   ctx.strokeStyle="#333";
-  ctx.lineWidth=1;
 
   for(let i=0;i<SIZE;i++){
-
     ctx.beginPath();
-    ctx.moveTo(MARGIN+i*CELL,MARGIN);
-    ctx.lineTo(MARGIN+i*CELL,MARGIN+GRID*CELL);
+    ctx.moveTo(MARGIN+i*CELL, MARGIN);
+    ctx.lineTo(MARGIN+i*CELL, MARGIN+(SIZE-1)*CELL);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(MARGIN,MARGIN+i*CELL);
-    ctx.lineTo(MARGIN+GRID*CELL,MARGIN+i*CELL);
+    ctx.moveTo(MARGIN, MARGIN+i*CELL);
+    ctx.lineTo(MARGIN+(SIZE-1)*CELL, MARGIN+i*CELL);
     ctx.stroke();
   }
 
   for(const [x,y] of HOSHI){
-
     ctx.beginPath();
-    ctx.arc(MARGIN+x*CELL,MARGIN+y*CELL,3,0,Math.PI*2);
+    ctx.arc(MARGIN+x*CELL, MARGIN+y*CELL, 3, 0, Math.PI*2);
     ctx.fillStyle="#222";
     ctx.fill();
   }
@@ -99,17 +68,14 @@ function draw(){
   }
 }
 
-/* =========================
-   石
-========================= */
-function drawStone(x,y,color){
+function drawStone(x,y,p){
 
-  const cx=MARGIN+x*CELL;
-  const cy=MARGIN+y*CELL;
+  const cx = MARGIN + x*CELL;
+  const cy = MARGIN + y*CELL;
 
-  const g=ctx.createRadialGradient(cx-4,cy-4,2,cx,cy,16);
+  const g = ctx.createRadialGradient(cx-3,cy-3,2,cx,cy,14);
 
-  if(color===1){
+  if(p===1){
     g.addColorStop(0,"#666");
     g.addColorStop(1,"#000");
   }else{
@@ -130,15 +96,13 @@ document.addEventListener("click",(e)=>{
 
   if(gameOver) return;
 
-  const rect=canvas.getBoundingClientRect();
+  const rect = canvas.getBoundingClientRect();
 
-  const x=Math.round((e.clientX-rect.left-MARGIN)/CELL);
-  const y=Math.round((e.clientY-rect.top-MARGIN)/CELL);
+  const x = Math.round((e.clientX-rect.left-MARGIN)/CELL);
+  const y = Math.round((e.clientY-rect.top-MARGIN)/CELL);
 
   if(x<0||y<0||x>=SIZE||y>=SIZE) return;
   if(board[y][x]) return;
-
-  setInfo("CPU思考中...");
 
   board[y][x]=1;
 
@@ -151,74 +115,50 @@ document.addEventListener("click",(e)=>{
     return;
   }
 
+  setInfo("CPU思考中...");
   setTimeout(cpuMove,50);
 });
 
 /* =========================
-   CPU（統一ロジック版）
+   CPU（完全シンプル版）
 ========================= */
 function cpuMove(){
 
   if(gameOver) return;
 
-  let move;
-
   // ① 即勝ち
-  move = findWinningMove(2);
-  if(move) return place(move.x,move.y,2);
+  let move = findWin(2);
+  if(move) return place(move,2);
 
-  // ② 即死防御（相手の勝ち潰し）
-  move = findWinningMove(1);
-  if(move) return place(move.x,move.y,2);
+  // ② 即負け防御
+  move = findWin(1);
+  if(move) return place(move,2);
 
-  // ★③ 脅威防御（3連含む全て統一）
-  move = findThreatMove(1);
-  if(move) return place(move.x,move.y,2);
-
-  // ④ 候補生成
-  const candidates = generateMoves();
-
-  let best=null;
-  let bestScore=-99999;
-
-  for(const m of candidates){
-
-    board[m.y][m.x]=2;
-
-    const score=lightSearch(1,2,false);
-
-    board[m.y][m.x]=0;
-
-    if(score>bestScore){
-      bestScore=score;
-      best=m;
-    }
-  }
-
-  if(best) place(best.x,best.y,2);
+  // ③ ランダム＋隣接
+  move = findRandomMove();
+  place(move,2);
 
   setInfo("あなたの番です");
 }
 
 /* =========================
-   ★統一脅威判定（重要）
-   「その手で相手の即勝ちを消せるか」
+   勝ち手探索
 ========================= */
-function findThreatMove(player){
+function findWin(p){
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
       if(board[y][x]) continue;
 
-      board[y][x]=player;
+      board[y][x]=p;
 
-      // ★核心：相手の即勝ちが発生するか
-      const threat = findWinningMove(player);
+      if(checkWin(x,y,p)){
+        board[y][x]=0;
+        return {x,y};
+      }
 
       board[y][x]=0;
-
-      if(threat) return {x,y};
     }
   }
 
@@ -226,37 +166,9 @@ function findThreatMove(player){
 }
 
 /* =========================
-   軽量探索
+   ランダム（近く優先）
 ========================= */
-function lightSearch(depth,maxDepth,isHuman){
-
-  if(depth===maxDepth) return evaluate();
-
-  const player=isHuman?1:2;
-
-  const moves=generateMoves().slice(0,10);
-
-  let best=isHuman?99999:-99999;
-
-  for(const m of moves){
-
-    board[m.y][m.x]=player;
-
-    const val=lightSearch(depth+1,maxDepth,!isHuman);
-
-    board[m.y][m.x]=0;
-
-    if(isHuman) best=Math.min(best,val);
-    else best=Math.max(best,val);
-  }
-
-  return best;
-}
-
-/* =========================
-   候補生成（軽量）
-========================= */
-function generateMoves(){
+function findRandomMove(){
 
   const list=[];
 
@@ -271,40 +183,19 @@ function generateMoves(){
     }
   }
 
-  return list.slice(0,20);
+  return list[Math.floor(Math.random()*list.length)];
 }
 
-/* =========================
-   近傍
-========================= */
 function hasNeighbor(x,y){
 
-  for(let dy=-2;dy<=2;dy++){
-    for(let dx=-2;dx<=2;dx++){
+  for(let dy=-1;dy<=1;dy++){
+    for(let dx=-1;dx<=1;dx++){
 
       if(board[y+dy]?.[x+dx]) return true;
     }
   }
 
   return false;
-}
-
-/* =========================
-   評価
-========================= */
-function evaluate(){
-
-  let s=0;
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]===2) s++;
-      if(board[y][x]===1) s--;
-    }
-  }
-
-  return s;
 }
 
 /* =========================
@@ -335,40 +226,14 @@ function checkWin(x,y,p){
 }
 
 /* =========================
-   勝ち手
-========================= */
-function findWinningMove(p){
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]) continue;
-
-      board[y][x]=p;
-
-      if(checkWin(x,y,p)){
-        board[y][x]=0;
-        return {x,y};
-      }
-
-      board[y][x]=0;
-    }
-  }
-
-  return null;
-}
-
-/* =========================
    置く
 ========================= */
-function place(x,y,p){
+function place(pos,p){
 
-  board[y][x]=p;
+  board[pos.y][pos.x]=p;
   draw();
 
-  if(p===2) playSound();
-
-  if(checkWin(x,y,p)){
+  if(checkWin(pos.x,pos.y,p)){
     gameOver=true;
     setInfo(p===1?"あなたの勝ち！":"CPUの勝ち！");
   }
@@ -378,12 +243,8 @@ function place(x,y,p){
    音
 ========================= */
 function playSound(){
-
   if(!audio) return;
-
-  audio.pause();
   audio.currentTime=0;
-
   audio.play().catch(()=>{});
 }
 
@@ -394,6 +255,5 @@ window.resetGame=()=>{
   gameOver=false;
 
   setInfo("あなたの番です");
-
   draw();
 };
