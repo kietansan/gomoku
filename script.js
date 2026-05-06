@@ -15,14 +15,18 @@ const HOSHI = [[3,3],[3,9],[9,3],[9,9],[6,6]];
 // ====== 初期化 ======
 window.onload = () => {
   canvas = document.getElementById("board");
-  if(!canvas) { alert("Canvas取得失敗"); return; }
+  if(!canvas){ alert("Canvas取得失敗"); return; }
   ctx = canvas.getContext("2d");
   audio = document.getElementById("putSound");
 
   canvas.width = (SIZE-1)*CELL + MARGIN*2;
   canvas.height = (SIZE-1)*CELL + MARGIN*2;
 
-  board = Array.from({length: SIZE},()=>Array(SIZE).fill(0));
+  board = Array.from({length: SIZE}, ()=>Array(SIZE).fill(0));
+
+  turn = 1;
+  gameOver = false;
+  thinking = false;
 
   setInfo("あなたの番です");
   draw();
@@ -35,22 +39,20 @@ function setInfo(txt){
 
 // ====== 盤面描画 ======
 function draw(){
-  // 背景（透明のため塗らない）
+  // 背景（透明のためクリアのみ）
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   // 線
   ctx.strokeStyle = "#333";
   ctx.lineWidth = 1;
   for(let i=0;i<SIZE;i++){
-    // 縦線
     ctx.beginPath();
-    ctx.moveTo(MARGIN+i*CELL, MARGIN);
-    ctx.lineTo(MARGIN+i*CELL, MARGIN+(SIZE-1)*CELL);
+    ctx.moveTo(MARGIN + i*CELL, MARGIN);
+    ctx.lineTo(MARGIN + i*CELL, MARGIN + (SIZE-1)*CELL);
     ctx.stroke();
-    // 横線
     ctx.beginPath();
-    ctx.moveTo(MARGIN, MARGIN+i*CELL);
-    ctx.lineTo(MARGIN+(SIZE-1)*CELL, MARGIN+i*CELL);
+    ctx.moveTo(MARGIN, MARGIN + i*CELL);
+    ctx.lineTo(MARGIN + (SIZE-1)*CELL, MARGIN + i*CELL);
     ctx.stroke();
   }
 
@@ -58,7 +60,7 @@ function draw(){
   ctx.fillStyle="#222";
   for(const [x,y] of HOSHI){
     ctx.beginPath();
-    ctx.arc(MARGIN+x*CELL, MARGIN+y*CELL, 3, 0, Math.PI*2);
+    ctx.arc(MARGIN + x*CELL, MARGIN + y*CELL, 3, 0, Math.PI*2);
     ctx.fill();
   }
 
@@ -86,12 +88,15 @@ function drawStone(x,y,p){
 // ====== クリック処理 ======
 canvas.addEventListener("click", (e)=>{
   if(gameOver || turn!==1 || thinking) return;
+
   const rect = canvas.getBoundingClientRect();
   const x = Math.round((e.clientX - rect.left - MARGIN)/CELL);
   const y = Math.round((e.clientY - rect.top - MARGIN)/CELL);
+
   if(x<0 || y<0 || x>=SIZE || y>=SIZE) return;
   if(board[y][x]) return;
 
+  // プレイヤーの石を置く
   board[y][x] = 1;
   draw();
   playSound();
@@ -111,7 +116,7 @@ canvas.addEventListener("click", (e)=>{
 // ====== 石置き音 ======
 function playSound(){
   if(!audio) return;
-  audio.currentTime=0;
+  audio.currentTime = 0;
   audio.play().catch(()=>{});
 }
 
@@ -120,9 +125,10 @@ function cpuMove(){
   if(gameOver) return;
 
   const candidates = getAllEmptyCells();
+  if(candidates.length===0){ gameOver=true; setInfo("引き分け"); return; }
+
   let best = null;
   let maxScore = -Infinity;
-
   for(const pos of candidates){
     const score = evaluateMove(pos,2);
     if(score>maxScore){
@@ -132,11 +138,58 @@ function cpuMove(){
   }
 
   if(best) placeStone(best,2);
+  thinking = false;
+  turn = 1;
+  setInfo("あなたの番です");
+  draw();
+}
+
+// ====== 空マス取得 ======
+function getAllEmptyCells(){
+  const arr = [];
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]===0){
+        arr.push({x:x,y:y});
+      }
+    }
+  }
+  return arr;
+}
+
+// ====== 石配置 ======
+function placeStone(pos,p){
+  board[pos.y][pos.x] = p;
+  playSound();
+  if(checkWin(pos.x,pos.y,p)){
+    gameOver = true;
+    setInfo(p===1?"あなたの勝ち！":"CPUの勝ち！");
+  }
+}
+
+// ====== 勝利判定 ======
+function checkWin(x,y,p){
+  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+  for(const [dx,dy] of dirs){
+    let count=1;
+    for(let i=1;i<=4;i++){
+      const nx=x+dx*i, ny=y+dy*i;
+      if(board[ny]?.[nx]===p) count++;
+      else break;
+    }
+    for(let i=1;i<=4;i++){
+      const nx=x-dx*i, ny=y-dy*i;
+      if(board[ny]?.[nx]===p) count++;
+      else break;
+    }
+    if(count>=5) return true;
+  }
+  return false;
 }
 
 // ====== 評価関数（正規化AI順序①～⑦） ======
 function evaluateMove(pos,p){
-  const opp = (p===1)?2:1;
+  const opp = p===1?2:1;
 
   // ①即勝ち
   board[pos.y][pos.x] = p;
@@ -196,36 +249,4 @@ function isTwoThreats(pos,p){
     let count=1;
     for(let i=1;i<=2;i++){
       const nx=pos.x+dx*i, ny=pos.y+dy*i;
-      if(board[ny]?.[nx]===p) count++;
-      else break;
-    }
-    for(let i=1;i<=2;i++){
-      const nx=pos.x-dx*i, ny=pos.y-dy*i;
-      if(board[ny]?.[nx]===p) count++;
-      else break;
-    }
-    if(count>=3) cnt++;
-  }
-  return cnt>=2;
-}
-
-// ====== ライン評価 ======
-function evaluateLinePotential(pos,p){
-  let score=0;
-  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
-  for(const [dx,dy] of dirs){
-    let count=0;
-    for(let i=1;i<=2;i++){
-      const nx=pos.x+dx*i, ny=pos.y+dy*i;
-      if(board[ny]?.[nx]===p) count++;
-    }
-    for(let i=1;i<=2;i++){
-      const nx=pos.x-dx*i, ny=pos.y-dy*i;
-      if(board[ny]?.[nx]===p) count++;
-    }
-    score += count*10;
-  }
-  return score;
-}
-
-// ====== 簡易3手先先読み ======
+      if(board[ny
