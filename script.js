@@ -16,6 +16,7 @@ const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 function init(){
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
+  lastMove = null;
   infoEl.textContent = "";
   draw();
 }
@@ -40,7 +41,7 @@ function draw(){
         cell.appendChild(stone);
       }
 
-      if(lastMove?.x === x && lastMove?.y === y){
+      if(lastMove?.x===x && lastMove?.y===y){
         cell.style.outline = "2px solid red";
       }
 
@@ -62,81 +63,79 @@ function playerMove(x,y){
 
   if(gameOver) return;
 
-  setTimeout(cpuMove, 5);
+  cpuMove();
 }
 
 /* =========================
-   CPU
+   CPUメイン
 ========================= */
 function cpuMove(){
   if(gameOver) return;
 
   let m;
 
-  // ★① CPU即勝ち
+  // ① CPU即勝ち
   m = findWin(2);
   if(m) return place(m.x,m.y,2);
 
-  // ★② プレイヤー即勝ち防御（最重要）
+  // ② プレイヤー即勝ち防御（最重要）
   m = findWin(1);
   if(m) return place(m.x,m.y,2);
 
-  // ★③ フォーク防御
+  // ③ フォーク防御
   m = findFork(1);
   if(m) return place(m.x,m.y,2);
 
-  // ★④ フォーク攻撃
+  // ④ フォーク攻撃
   m = findFork(2);
   if(m) return place(m.x,m.y,2);
 
-  // ★⑤ 通常評価
+  // ⑤ 通常評価
   m = bestMove();
   return place(m.x,m.y,2);
 }
 
 /* =========================
-   即勝ち検出（攻防共通）
+   即勝ち検出
 ========================= */
 function findWin(p){
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-
       if(board[y][x]) continue;
 
-      board[y][x] = p;
+      board[y][x]=p;
 
       if(checkWin(x,y,p)){
-        board[y][x] = 0;
+        board[y][x]=0;
         return {x,y};
       }
 
-      board[y][x] = 0;
+      board[y][x]=0;
     }
   }
   return null;
 }
 
 /* =========================
-   フォーク検出（両取り）
+   フォーク検出
 ========================= */
 function findFork(p){
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-
       if(board[y][x]) continue;
 
-      board[y][x] = p;
+      board[y][x]=p;
 
-      let threat = 0;
+      let threat=0;
 
       for(const [dx,dy] of DIRS){
-        const {count,open} = line(x,y,dx,dy,p);
-        if(count === 3 && open === 2) threat++;
+        const {count,open}=line(x,y,dx,dy,p);
+        if(count===3 && open===2) threat++;
       }
 
-      board[y][x] = 0;
+      board[y][x]=0;
 
-      if(threat >= 2){
+      if(threat>=2){
         return {x,y};
       }
     }
@@ -145,26 +144,24 @@ function findFork(p){
 }
 
 /* =========================
-   通常評価AI
+   通常手評価
 ========================= */
 function bestMove(){
   const moves = getMoves();
 
-  let best = null;
-  let bestScore = -Infinity;
+  let best=null;
+  let bestScore=-Infinity;
 
   for(const m of moves){
-    board[m.y][m.x] = 2;
+    board[m.y][m.x]=2;
 
-    const score =
-      evaluate(2) -
-      evaluate(1) * 1.2;
+    const score = evaluate(2) - evaluate(1)*1.1;
 
-    board[m.y][m.x] = 0;
+    board[m.y][m.x]=0;
 
-    if(score > bestScore){
-      bestScore = score;
-      best = m;
+    if(score>bestScore){
+      bestScore=score;
+      best=m;
     }
   }
 
@@ -172,48 +169,49 @@ function bestMove(){
 }
 
 /* =========================
-   候補手（近傍制限）
+   候補手生成（重要）
 ========================= */
 function getMoves(){
-  const moves = [];
+  const moves=[];
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
 
-      let near = false;
+      let near=false;
 
       for(let dy=-2;dy<=2;dy++){
         for(let dx=-2;dx<=2;dx++){
-          if(board[y+dy]?.[x+dx]) near = true;
+          if(board[y+dy]?.[x+dx]) near=true;
         }
       }
 
-      if(near) moves.push({x,y});
+      if(near || (x===7 && y===7)){
+        moves.push({x,y});
+      }
     }
   }
 
-  return moves.length ? moves : [{x:7,y:7}];
+  return moves;
 }
 
 /* =========================
    評価関数
 ========================= */
 function evaluate(p){
-  let score = 0;
+  let score=0;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-
-      if(board[y][x] !== p) continue;
+      if(board[y][x]!==p) continue;
 
       for(const [dx,dy] of DIRS){
-        const {count,open} = line(x,y,dx,dy,p);
+        const {count,open}=line(x,y,dx,dy,p);
 
-        if(count >= 5) score += 1000000;
-        else if(count === 4) score += 50000;
-        else if(count === 3 && open === 2) score += 8000;
-        else if(count === 2) score += 500;
+        if(count>=5) score+=1000000;
+        else if(count===4) score+=50000;
+        else if(count===3 && open===2) score+=8000;
+        else if(count===2) score+=500;
       }
     }
   }
@@ -225,42 +223,41 @@ function evaluate(p){
    ライン判定
 ========================= */
 function line(x,y,dx,dy,p){
-  let c = 1, open = 0;
+  let c=1, open=0;
 
-  let nx = x + dx, ny = y + dy;
-  while(board[ny]?.[nx] === p){
-    c++; nx += dx; ny += dy;
+  let nx=x+dx, ny=y+dy;
+  while(board[ny]?.[nx]===p){
+    c++; nx+=dx; ny+=dy;
   }
-  if(board[ny]?.[nx] === 0) open++;
+  if(board[ny]?.[nx]===0) open++;
 
-  nx = x - dx; ny = y - dy;
-  while(board[ny]?.[nx] === p){
-    c++; nx -= dx; ny -= dy;
+  nx=x-dx; ny=y-dy;
+  while(board[ny]?.[nx]===p){
+    c++; nx-=dx; ny-=dy;
   }
-  if(board[ny]?.[nx] === 0) open++;
+  if(board[ny]?.[nx]===0) open++;
 
   return {count:c,open};
 }
 
 /* =========================
-   勝利判定
+   勝利判定（最重要）
 ========================= */
 function checkWin(x,y,p){
   for(const [dx,dy] of DIRS){
-    let c = 1;
+    let c=1;
 
     for(const d of [-1,1]){
-      let nx = x + dx*d;
-      let ny = y + dy*d;
+      let nx=x+dx*d, ny=y+dy*d;
 
-      while(board[ny]?.[nx] === p){
+      while(board[ny]?.[nx]===p){
         c++;
-        nx += dx*d;
-        ny += dy*d;
+        nx+=dx*d;
+        ny+=dy*d;
       }
     }
 
-    if(c >= 5) return true;
+    if(c>=5) return true;
   }
 
   return false;
@@ -270,15 +267,17 @@ function checkWin(x,y,p){
    着手
 ========================= */
 function place(x,y,p){
-  board[y][x] = p;
-  lastMove = {x,y};
+  if(gameOver) return;
+
+  board[y][x]=p;
+  lastMove={x,y};
 
   playSound();
   draw();
 
   if(checkWin(x,y,p)){
-    gameOver = true;
-    infoEl.textContent = (p === 2 ? "CPUの勝ち" : "あなたの勝ち");
+    gameOver=true;
+    infoEl.textContent = (p===2 ? "CPUの勝ち" : "あなたの勝ち");
   }
 }
 
@@ -286,7 +285,7 @@ function place(x,y,p){
    音
 ========================= */
 function playSound(){
-  sound.currentTime = 0;
+  sound.currentTime=0;
   sound.play().catch(()=>{});
 }
 
