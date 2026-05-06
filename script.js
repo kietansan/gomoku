@@ -13,14 +13,25 @@ const sound = document.getElementById("sound");
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
 /* =========================
+   星位置（碁盤風）
+========================= */
+const starPoints = [
+  [3,3],[3,11],
+  [11,3],[11,11],
+  [7,7]
+];
+
+/* =========================
    初期化
 ========================= */
 function init(){
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
   lastMove = null;
+
   setInfo("あなたの番です");
   draw();
+  markStars();
 }
 
 function resetGame(){
@@ -31,7 +42,7 @@ function resetGame(){
 window.resetGame = resetGame;
 
 /* =========================
-   UI統一（重要）
+   UI
 ========================= */
 function setInfo(text){
   infoEl.textContent = text;
@@ -70,6 +81,18 @@ function draw(){
 }
 
 /* =========================
+   星を付与
+========================= */
+function markStars(){
+  for(const [x,y] of starPoints){
+    const cell = boardEl.children[y]?.children[x];
+    if(cell){
+      cell.classList.add("star");
+    }
+  }
+}
+
+/* =========================
    プレイヤー
 ========================= */
 function playerMove(x,y){
@@ -86,7 +109,7 @@ function playerMove(x,y){
   setTimeout(()=>{
     if(gameOver || id !== gameId) return;
     cpuMove(id);
-  },50);
+  }, 50);
 }
 
 /* =========================
@@ -105,7 +128,7 @@ function cpuMove(id){
 }
 
 /* =========================
-   4手読み（軽量ミニマックス）
+   4手読み
 ========================= */
 function searchBestMove(p, depth){
 
@@ -173,7 +196,7 @@ function timeUp(){
 }
 
 /* =========================
-   候補手（安定化）
+   候補手（安定）
 ========================= */
 function getMoves(){
 
@@ -270,7 +293,7 @@ function checkWin(x,y,p){
 }
 
 /* =========================
-   着手（UI責任ここに集約）
+   着手
 ========================= */
 function place(x,y,p){
 
@@ -280,6 +303,7 @@ function place(x,y,p){
   lastMove={x,y};
 
   draw();
+  markStars(); // ←重要（再描画後に復活）
 
   if(checkWin(x,y,p)){
     gameOver=true;
@@ -290,7 +314,6 @@ function place(x,y,p){
 
   playSound();
 
-  // ★重要：UIはここで一元管理
   if(p===2){
     setInfo("あなたの番です");
   }
