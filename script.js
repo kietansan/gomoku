@@ -50,7 +50,7 @@ function drawWood(){
 
   for(let i=0;i<d.length;i+=4){
 
-    const g = 200 + Math.random()*30;
+    const g = 200 + Math.random()*25;
 
     d[i]=g;
     d[i+1]=170;
@@ -151,11 +151,11 @@ document.addEventListener("click",(e)=>{
     return;
   }
 
-  setTimeout(cpuMove,60);
+  setTimeout(cpuMove,50);
 });
 
 /* =========================
-   CPU（正規化AI）
+   CPU（統一ロジック版）
 ========================= */
 function cpuMove(){
 
@@ -167,12 +167,12 @@ function cpuMove(){
   move = findWinningMove(2);
   if(move) return place(move.x,move.y,2);
 
-  // ② 即死防御
+  // ② 即死防御（相手の勝ち潰し）
   move = findWinningMove(1);
   if(move) return place(move.x,move.y,2);
 
-  // ③ ★3連防御（修正版：形ではなく「即4化チェック」）
-  move = findThreeThreatBlock(1);
+  // ★③ 脅威防御（3連含む全て統一）
+  move = findThreatMove(1);
   if(move) return place(move.x,move.y,2);
 
   // ④ 候補生成
@@ -201,10 +201,10 @@ function cpuMove(){
 }
 
 /* =========================
-   ★3連防御（本質修正版）
-   「そこに置いたら相手が即勝ちになるか」
+   ★統一脅威判定（重要）
+   「その手で相手の即勝ちを消せるか」
 ========================= */
-function findThreeThreatBlock(player){
+function findThreatMove(player){
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -213,7 +213,7 @@ function findThreeThreatBlock(player){
 
       board[y][x]=player;
 
-      // ★本質：その結果、相手に即勝ちが生まれるか
+      // ★核心：相手の即勝ちが発生するか
       const threat = findWinningMove(player);
 
       board[y][x]=0;
@@ -254,7 +254,7 @@ function lightSearch(depth,maxDepth,isHuman){
 }
 
 /* =========================
-   候補生成
+   候補生成（軽量）
 ========================= */
 function generateMoves(){
 
