@@ -6,7 +6,6 @@ let gameOver = false;
 
 const boardEl = document.getElementById("board");
 const infoEl = document.getElementById("info");
-const sound = document.getElementById("sound");
 
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
@@ -19,10 +18,13 @@ function init(){
 }
 window.resetGame = init;
 
-/* ===== 音 ===== */
-function playSound(){
-  sound.currentTime = 0;
-  sound.play().catch(()=>{});
+/* ===== 星 ===== */
+function isStar(x,y){
+  return (
+    (x===3&&y===3)||(x===3&&y===9)||
+    (x===9&&y===3)||(x===9&&y===9)||
+    (x===6&&y===6)
+  );
 }
 
 /* ===== 描画 ===== */
@@ -97,19 +99,9 @@ function draw(){
   };
 }
 
-/* ===== 星 ===== */
-function isStar(x,y){
-  return (
-    (x===3&&y===3)||(x===3&&y===9)||
-    (x===9&&y===3)||(x===9&&y===9)||
-    (x===6&&y===6)
-  );
-}
-
 /* ===== 着手 ===== */
 function place(x,y,p){
   board[y][x]=p;
-  playSound();
   draw();
 
   if(checkWin(x,y,p)){
@@ -138,14 +130,14 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* ===== 脅威レベル ===== */
-function getThreatLevel(x,y,p){
+/* ===== 危険検出（核心） ===== */
+function isDanger(x,y,p){
 
-  let best = 0;
+  board[y][x]=p;
 
   for(const [dx,dy] of DIRS){
 
-    let count=1, open=0;
+    let count=1,open=0;
 
     let nx=x+dx,ny=y+dy;
     while(board[ny]?.[nx]===p){count++;nx+=dx;ny+=dy;}
@@ -155,120 +147,82 @@ function getThreatLevel(x,y,p){
     while(board[ny]?.[nx]===p){count++;nx-=dx;ny-=dy;}
     if(board[ny]?.[nx]===0) open++;
 
-    if(count>=5) best=Math.max(best,1000000);
-    else if(count===4 && open===2) best=Math.max(best,100000);
-    else if(count===4 && open===1) best=Math.max(best,10000);
-    else if(count===3 && open===2) best=Math.max(best,5000);
-    else if(count===3 && open===1) best=Math.max(best,1000);
+    if(count>=4 || (count===3 && open===2)){
+      board[y][x]=0;
+      return true;
+    }
   }
 
-  return best;
+  board[y][x]=0;
+  return false;
 }
 
-/* ===== 脅威手 ===== */
-function getThreatMoves(p){
+/* ===== 評価 ===== */
+function evalPos(x,y,p){
 
-  const moves=[];
+  let score=0;
+
+  for(const [dx,dy] of DIRS){
+
+    let count=1,open=0;
+
+    let nx=x+dx,ny=y+dy;
+    while(board[ny]?.[nx]===p){count++;nx+=dx;ny+=dy;}
+    if(board[ny]?.[nx]===0) open++;
+
+    nx=x-dx;ny=y-dy;
+    while(board[ny]?.[nx]===p){count++;nx-=dx;ny-=dy;}
+    if(board[ny]?.[nx]===0) open++;
+
+    if(count>=5) score+=100000;
+    else if(count===4&&open===2) score+=20000;
+    else if(count===4&&open===1) score+=5000;
+    else if(count===3&&open===2) score+=2000;
+    else if(count===3&&open===1) score+=200;
+  }
+
+  return score;
+}
+
+/* ===== 候補手 ===== */
+function getMoves(){
+
+  const list=[];
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
       if(board[y][x]) continue;
 
-      board[y][x]=p;
-      const t = getThreatLevel(x,y,p);
-      board[y][x]=0;
-
-      if(t >= 1000){
-        moves.push({x,y,t});
+      let near=false;
+      for(let dy=-2;dy<=2;dy++){
+        for(let dx=-2;dx<=2;dx++){
+          if(board[y+dy]?.[x+dx]){
+            near=true;
+            break;
+          }
+        }
+        if(near) break;
       }
+
+      if(!near) continue;
+
+      const s =
+        evalPos(x,y,2)*1.2 +
+        evalPos(x,y,1);
+
+      list.push({x,y,s});
     }
   }
 
-  moves.sort((a,b)=>b.t-a.t);
-  return moves.slice(0,8);
-}
-
-/* ===== 脅威探索 ===== */
-function threatSearch(p, depth){
-
-  if(depth === 0) return false;
-
-  const moves = getThreatMoves(p);
-
-  for(let m of moves){
-
-    board[m.y][m.x] = p;
-
-    if(checkWin(m.x,m.y,p)){
-      board[m.y][m.x]=0;
-      return true;
-    }
-
-    const opponent = (p===2?1:2);
-    const oppMoves = getThreatMoves(opponent);
-
-    let blocked = false;
-
-    for(let o of oppMoves){
-
-      board[o.y][o.x] = opponent;
-
-      if(!threatSearch(p, depth-1)){
-        blocked = true;
-      }
-
-      board[o.y][o.x] = 0;
-    }
-
-    board[m.y][m.x] = 0;
-
-    if(!blocked){
-      return true;
-    }
-  }
-
-  return false;
-}
-
-/* ===== 評価 ===== */
-function evaluate(){
-  let score=0;
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      const p=board[y][x];
-      if(!p) continue;
-
-      for(const [dx,dy] of DIRS){
-        let count=1,open=0;
-
-        let nx=x+dx,ny=y+dy;
-        while(board[ny]?.[nx]===p){count++;nx+=dx;ny+=dy;}
-        if(board[ny]?.[nx]===0) open++;
-
-        nx=x-dx;ny=y-dy;
-        while(board[ny]?.[nx]===p){count++;nx-=dx;ny-=dy;}
-        if(board[ny]?.[nx]===0) open++;
-
-        let val=0;
-        if(count>=5) val=100000;
-        else if(count===4&&open===2) val=30000;
-        else if(count===4&&open===1) val=10000;
-        else if(count===3&&open===2) val=5000;
-        else if(count===3&&open===1) val=1000;
-
-        score += (p===2?val:-val);
-      }
-    }
-  }
-  return score;
+  list.sort((a,b)=>b.s-a.s);
+  return list.slice(0,8);
 }
 
 /* ===== CPU ===== */
 function cpuMove(){
 
-  // 勝ち
+  // 1 勝ち
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
@@ -282,7 +236,7 @@ function cpuMove(){
     }
   }
 
-  // 防御
+  // 2 即防御
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
@@ -296,44 +250,56 @@ function cpuMove(){
     }
   }
 
-  // ★勝ち筋探索（最強）
+  // 3 ★危険防御（最重要）
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-
       if(board[y][x]) continue;
 
-      board[y][x]=2;
-
-      if(threatSearch(2,3)){
-        board[y][x]=0;
+      if(isDanger(x,y,1)){
         place(x,y,2);
         return;
       }
-
-      board[y][x]=0;
     }
   }
 
-  // fallback（評価）
+  // 4 思考（相手の最善反撃を見る）
+  const moves = getMoves();
+
   let best=null;
   let bestScore=-Infinity;
 
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(board[y][x]) continue;
+  for(let m of moves){
 
-      board[y][x]=2;
-      const score = evaluate();
-      board[y][x]=0;
+    board[m.y][m.x]=2;
 
-      if(score>bestScore){
-        bestScore=score;
-        best={x,y};
-      }
+    let worst=Infinity;
+
+    const next = getMoves();
+
+    for(let n of next){
+
+      board[n.y][n.x]=1;
+
+      const val =
+        evalPos(n.x,n.y,1) -
+        evalPos(m.x,m.y,2);
+
+      board[n.y][n.x]=0;
+
+      if(val<worst) worst=val;
+    }
+
+    board[m.y][m.x]=0;
+
+    if(worst>bestScore){
+      bestScore=worst;
+      best=m;
     }
   }
 
-  if(best) place(best.x,best.y,2);
+  if(best){
+    place(best.x,best.y,2);
+  }
 }
 
 init();
