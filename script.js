@@ -13,11 +13,12 @@ const sound = document.getElementById("sound");
 function init(){
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
+  infoEl.textContent = "";
   draw();
 }
 
 /* =========================
-   描画（シンプル安定）
+   描画
 ========================= */
 function draw(){
   boardEl.innerHTML = "";
@@ -55,6 +56,8 @@ function playerMove(x,y){
 
   if(checkWin(x,y,1)){
     gameOver = true;
+    infoEl.textContent = "あなたの勝ち";
+    draw();
     return;
   }
 
@@ -63,57 +66,33 @@ function playerMove(x,y){
 }
 
 /* =========================
-   CPUメイン
+   CPU
 ========================= */
 function cpuMove(){
   if(gameOver) return;
 
-  /* ① 即勝ち */
+  /* ★① CPU即勝ち */
   let win = findWinningMove(2);
   if(win){
     place(win);
+
+    if(checkWin(win.x,win.y,2)){
+      gameOver = true;
+      infoEl.textContent = "CPUの勝ち";
+    }
+
     return;
   }
 
-  /* ② 即死防御 */
-  let block = findWinningMove(1);
+  /* ★② 4連・3連・即死防御 */
+  let block = findStrongThreat(1);
   if(block){
     place(block);
     return;
   }
 
-  /* ③ 2手勝ち（超重要） */
-  let forced = findTwoStepWin(2);
-  if(forced){
-    place(forced);
-    return;
-  }
-
-  /* ④ 2手負け回避 */
-  let defend2 = findTwoStepWin(1);
-  if(defend2){
-    place(defend2);
-    return;
-  }
-
-  /* ⑤ 通常探索 */
-  const moves = getMoves();
-
-  let best = moves[0];
-  let bestScore = -Infinity;
-
-  for(const m of moves){
-    board[m.y][m.x] = 2;
-
-    const score = evaluateBoard();
-
-    board[m.y][m.x] = 0;
-
-    if(score > bestScore){
-      bestScore = score;
-      best = m;
-    }
-  }
+  /* ★③ 攻撃優先 */
+  let best = getBestMove();
 
   place(best);
 }
@@ -139,9 +118,10 @@ function findWinningMove(p){
 }
 
 /* =========================
-   2手勝ち検出（核心）
+   強化防御（ここが核心）
+   4連・3連・即死全部対応
 ========================= */
-function findTwoStepWin(p){
+function findStrongThreat(p){
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -150,25 +130,16 @@ function findTwoStepWin(p){
 
       board[y][x] = p;
 
-      let winCount = 0;
-
-      const moves = getMoves();
-
-      for(const m of moves){
-        board[m.y][m.x] = p;
-
-        if(checkWin(m.x,m.y,p)){
-          winCount++;
-        }
-
-        board[m.y][m.x] = 0;
+      if(
+        checkWin(x,y,p) ||        // 即死
+        isFour(x,y,p) ||          // 4連
+        isOpenThree(x,y,p)        // 活三
+      ){
+        board[y][x] = 0;
+        return {x,y};
       }
 
       board[y][x] = 0;
-
-      if(winCount >= 2){
-        return {x,y};
-      }
     }
   }
 
@@ -176,79 +147,44 @@ function findTwoStepWin(p){
 }
 
 /* =========================
-   候補手（中央寄り）
+   4連判定（強化版）
 ========================= */
-function getMoves(){
-  const moves = [];
-  const c = SIZE/2;
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x] !== 0) continue;
-
-      let score = 0;
-
-      for(let dy=-2;dy<=2;dy++){
-        for(let dx=-2;dx<=2;dx++){
-
-          const v = board[y+dy]?.[x+dx];
-
-          if(v===2) score += 2;
-          if(v===1) score += 3;
-        }
-      }
-
-      score -= (Math.abs(x-c)+Math.abs(y-c));
-
-      moves.push({x,y,score});
-    }
-  }
-
-  moves.sort((a,b)=>b.score-a.score);
-
-  return moves.slice(0,10);
+function isFour(x,y,p){
+  return getMaxLine(x,y,p) === 4;
 }
 
 /* =========================
-   評価（簡略だが実戦用）
+   活三判定
 ========================= */
-function evaluateBoard(){
-  let score = 0;
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x] === 0) continue;
-
-      const p = board[y][x];
-      score += evalPoint(x,y,p) * (p===2 ? 1 : -1);
-    }
-  }
-
-  return score;
-}
-
-/* 形評価 */
-function evalPoint(x,y,p){
-
-  let score = 0;
-  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+function isOpenThree(x,y,p){
+  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
 
   for(const [dx,dy] of dirs){
-    const {count,open} = getLine(x,y,dx,dy,p);
-
-    if(count >= 5) score += 100000;
-    if(count === 4) score += 50000;
-    if(count === 3 && open === 2) score += 10000;
-    if(count === 3 && open === 1) score += 2000;
-    if(count === 2) score += 200;
+    const {count,open}=getLine(x,y,dx,dy,p);
+    if(count===3 && open===2) return true;
   }
 
-  return score;
+  return false;
 }
 
-/* ライン */
+/* =========================
+   ライン最大長
+========================= */
+function getMaxLine(x,y,p){
+  let max=0;
+  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
+
+  for(const [dx,dy] of dirs){
+    const {count}=getLine(x,y,dx,dy,p);
+    max=Math.max(max,count);
+  }
+
+  return max;
+}
+
+/* =========================
+   ライン計算
+========================= */
 function getLine(x,y,dx,dy,p){
   let count=1, open=0;
 
@@ -265,6 +201,58 @@ function getLine(x,y,dx,dy,p){
   if(board[ny]?.[nx]===0) open++;
 
   return {count,open};
+}
+
+/* =========================
+   攻撃AI（シンプル強化）
+========================= */
+function getBestMove(){
+
+  let best=null;
+  let bestScore=-Infinity;
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]!==0) continue;
+
+      board[y][x]=2;
+
+      let score = evaluate(x,y);
+
+      board[y][x]=0;
+
+      if(score>bestScore){
+        bestScore=score;
+        best={x,y};
+      }
+    }
+  }
+
+  return best;
+}
+
+/* =========================
+   評価関数
+========================= */
+function evaluate(x,y){
+  let score=0;
+
+  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
+
+  for(const [dx,dy] of dirs){
+    const {count,open}=getLine(x,y,dx,dy,2);
+
+    if(count>=5) score+=100000;
+    else if(count===4) score+=50000;
+    else if(count===3 && open===2) score+=10000;
+    else if(count===2) score+=1000;
+  }
+
+  const c=SIZE/2;
+  score -= (Math.abs(x-c)+Math.abs(y-c))*3;
+
+  return score;
 }
 
 /* =========================
@@ -291,16 +279,11 @@ function checkWin(x,y,p){
 }
 
 /* =========================
-   着手
+   着手処理
 ========================= */
 function place(m){
   board[m.y][m.x]=2;
   playSound();
-
-  if(checkWin(m.x,m.y,2)){
-    gameOver=true;
-  }
-
   draw();
 }
 
