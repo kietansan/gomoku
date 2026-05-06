@@ -26,35 +26,35 @@ function resetGame(){
 window.resetGame = resetGame;
 
 /* =========================
-   星（13路）
+   星（13路標準）
 ========================= */
 function isStar(x,y){
-  const stars = [
-    [3,3],[3,9],
-    [9,3],[9,9],
-    [6,6]
-  ];
-
-  return stars.some(([sx,sy]) => sx===x && sy===y);
+  return (
+    (x===3 && y===3) ||
+    (x===3 && y===9) ||
+    (x===9 && y===3) ||
+    (x===9 && y===9) ||
+    (x===6 && y===6)
+  );
 }
 
 /* =========================
-   描画（交点）
+   描画（交点そのもの）
 ========================= */
 function draw(){
   boardEl.innerHTML = "";
 
   for(let y=0;y<SIZE;y++){
     const row = document.createElement("div");
-    row.className = "row13";
+    row.className = "row";
 
     for(let x=0;x<SIZE;x++){
 
       const node = document.createElement("div");
-      node.className = "node13";
+      node.className = "node";
 
       if(isStar(x,y)){
-        node.classList.add("star13");
+        node.classList.add("star");
       }
 
       if(board[y][x] === 1){
@@ -70,7 +70,8 @@ function draw(){
       }
 
       if(lastMove?.x === x && lastMove?.y === y){
-        node.classList.add("last");
+        node.style.outline = "2px solid red";
+        node.style.outlineOffset = "-2px";
       }
 
       node.onclick = () => place(x,y,1);
@@ -103,6 +104,7 @@ function place(x,y,p){
    勝利判定
 ========================= */
 function checkWin(x,y,p){
+
   for(const [dx,dy] of DIRS){
     let c = 1;
 
@@ -119,6 +121,7 @@ function checkWin(x,y,p){
 
     if(c >= 5) return true;
   }
+
   return false;
 }
 
