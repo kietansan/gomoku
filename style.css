@@ -1,67 +1,68 @@
 body{
   text-align:center;
   font-family:sans-serif;
-  background:#f5f5f5;
+  background:#e8e8e8;
 }
 
-/* ===== 外枠付き盤面 ===== */
+/* ===== 盤（外枠込み） ===== */
 #board{
   position:relative;
 
-  /* ★余白込みサイズ */
-  width:468px;
-  height:468px;
+  width:442px;
+  height:442px;
 
   margin:20px auto;
-  background:#caa15a; /* 外枠色 */
-  border:10px solid #8b5a2b; /* 木枠 */
-  box-shadow:0 6px 18px rgba(0,0,0,0.3);
+
+  /* ★余白も含めて完全同色 */
+  background:#d8b56a;
+
+  /* ★外枠はこれだけ */
+  border:3px solid #3a2a14;
+
+  box-shadow:0 4px 10px rgba(0,0,0,0.25);
 }
 
-/* ===== 内部グリッド領域 ===== */
-#board::before,
-#board::after{
+/* ===== 線（完全均一・ズレなし） ===== */
+#board::before{
   content:"";
   position:absolute;
-  top:10px;
-  left:10px;
-  right:10px;
-  bottom:10px;
-  pointer-events:none;
-}
+  inset:0;
 
-/* 縦線 */
-#board::before{
   background:
     repeating-linear-gradient(
       to right,
       transparent,
       transparent 34px,
-      rgba(0,0,0,0.45) 34px,
-      rgba(0,0,0,0.45) 35px
+      rgba(0,0,0,0.5) 34px,
+      rgba(0,0,0,0.5) 35px
     );
+
+  pointer-events:none;
 }
 
-/* 横線 */
 #board::after{
+  content:"";
+  position:absolute;
+  inset:0;
+
   background:
     repeating-linear-gradient(
       to bottom,
       transparent,
       transparent 34px,
-      rgba(0,0,0,0.45) 34px,
-      rgba(0,0,0,0.45) 35px
+      rgba(0,0,0,0.5) 34px,
+      rgba(0,0,0,0.5) 35px
     );
+
+  pointer-events:none;
 }
 
-/* ===== 交点（内側にオフセット） ===== */
+/* ===== 交点（絶対座標・ズレなし） ===== */
 .cell{
   position:absolute;
   width:34px;
   height:34px;
-
-  /* ★ここが重要：外枠分ずらす */
-  transform:translate(10px,10px);
+  /* ★重要：transform禁止（ズレ原因） */
 }
 
 /* ===== 石 ===== */
@@ -75,22 +76,20 @@ body{
   left:50%;
   transform:translate(-50%,-50%);
 
-  box-shadow:0 2px 4px rgba(0,0,0,0.4);
+  box-shadow:0 2px 4px rgba(0,0,0,0.35);
   z-index:2;
 }
 
-/* 黒 */
 .black{
   background: radial-gradient(circle at 30% 30%, #444, #000);
 }
 
-/* 白 */
 .white{
   background: radial-gradient(circle at 30% 30%, #fff, #ddd);
   border:1px solid #111;
 }
 
-/* 星 */
+/* ===== 星（ズレ防止） ===== */
 .star{
   position:absolute;
   width:6px;
@@ -98,11 +97,9 @@ body{
   background:#111;
   border-radius:50%;
   z-index:1;
-
-  transform:translate(10px,10px);
 }
 
-/* UI */
+/* ===== UI ===== */
 #info{
   margin-top:10px;
   font-size:18px;
