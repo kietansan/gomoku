@@ -52,28 +52,27 @@ function playerMove(x,y){
   }
 
   draw();
-  setTimeout(cpuMove, 50);
+  setTimeout(cpuMove, 30);
 }
 
 /* =========================
-   CPU（10秒思考・αβ）
+   CPU（10秒αβ・安定版）
 ========================= */
 
 function cpuMove(){
   if(gameOver) return;
 
-  const moves = getMoves();
+  const moves = getMovesSafe();
+  if(!moves.length) return;
 
   const startTime = performance.now();
-  const TIME_LIMIT = 10000; // ★10秒
+  const TIME_LIMIT = 10000;
 
   let bestMove = moves[0];
   let bestScore = -Infinity;
 
-  let depth = 1;
-
   // 反復深化
-  while(true){
+  for(let depth = 1; depth <= 4; depth++){
 
     let localBestMove = null;
     let localBestScore = -Infinity;
@@ -99,33 +98,26 @@ function cpuMove(){
         localBestMove = m;
       }
 
-      if(performance.now() - startTime > TIME_LIMIT){
-        break;
-      }
+      if(performance.now() - startTime > TIME_LIMIT) break;
     }
 
-    // 更新
     if(localBestMove){
       bestMove = localBestMove;
       bestScore = localBestScore;
     }
 
-    depth++;
-
-    if(performance.now() - startTime > TIME_LIMIT){
-      break;
-    }
-
-    // 安全上限（暴走防止）
-    if(depth > 6) break;
+    if(performance.now() - startTime > TIME_LIMIT) break;
   }
+
+  // ★最終保険
+  if(!bestMove) bestMove = {x:7,y:7};
 
   board[bestMove.y][bestMove.x] = 2;
   finalizeCPU(bestMove);
 }
 
 /* =========================
-   ミニマックス + αβ + 時間制限
+   αβミニマックス（時間制限付き）
 ========================= */
 
 function minimax(player, depth, alpha, beta, isMax, startTime, limit){
@@ -136,7 +128,7 @@ function minimax(player, depth, alpha, beta, isMax, startTime, limit){
     return evaluateBoard();
   }
 
-  const moves = getMoves();
+  const moves = getMovesSafe();
 
   if(isMax){
     let maxEval = -Infinity;
@@ -144,7 +136,7 @@ function minimax(player, depth, alpha, beta, isMax, startTime, limit){
     for(const m of moves){
       board[m.y][m.x] = player;
 
-      if(checkWin(m.x, m.y, player)){
+      if(checkWin(m.x,m.y,player)){
         board[m.y][m.x] = 0;
         return 100000;
       }
@@ -176,7 +168,7 @@ function minimax(player, depth, alpha, beta, isMax, startTime, limit){
     for(const m of moves){
       board[m.y][m.x] = player;
 
-      if(checkWin(m.x, m.y, player)){
+      if(checkWin(m.x,m.y,player)){
         board[m.y][m.x] = 0;
         return -100000;
       }
@@ -222,7 +214,6 @@ function evaluateBoard(){
   return score;
 }
 
-/* 形評価 */
 function evaluate(x,y,p){
   let score = 0;
   const dirs = [[1,0],[0,1],[1,1],[1,-1]];
@@ -268,7 +259,6 @@ function getLine(x,y,dx,dy,p){
   return {count, openEnds};
 }
 
-/* 形スコア */
 function patternScore(count, openEnds){
   if(count >= 4) return 100000;
   if(count === 3 && openEnds === 2) return 10000;
@@ -278,8 +268,11 @@ function patternScore(count, openEnds){
   return 0;
 }
 
-/* 候補手 */
-function getMoves(){
+/* =========================
+   候補手（完全安全版）
+========================= */
+
+function getMovesSafe(){
   const moves = [];
 
   for(let y=0;y<SIZE;y++){
@@ -288,8 +281,8 @@ function getMoves(){
 
       let near = false;
 
-      for(let dy=-1;dy<=1;dy++){
-        for(let dx=-1;dx<=1;dx++){
+      for(let dy=-2;dy<=2;dy++){
+        for(let dx=-2;dx<=2;dx++){
           if(board[y+dy]?.[x+dx] !== 0) near = true;
         }
       }
@@ -298,7 +291,18 @@ function getMoves(){
     }
   }
 
-  return moves.length ? moves : [{x:7,y:7}];
+  // 完全空防止
+  if(moves.length === 0){
+    for(let y=0;y<SIZE;y++){
+      for(let x=0;x<SIZE;x++){
+        if(board[y][x] === 0){
+          moves.push({x,y});
+        }
+      }
+    }
+  }
+
+  return moves;
 }
 
 /* 勝利判定 */
@@ -325,10 +329,15 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* CPU確定 */
-function finalizeCPU(m){
+/* 音 */
+function playSound(){
   sound.currentTime = 0;
   sound.play().catch(()=>{});
+}
+
+/* CPU終了 */
+function finalizeCPU(m){
+  playSound();
 
   if(checkWin(m.x,m.y,2)){
     infoEl.textContent = "CPUの勝ち";
@@ -338,12 +347,6 @@ function finalizeCPU(m){
   }
 
   draw();
-}
-
-/* 音 */
-function playSound(){
-  sound.currentTime = 0;
-  sound.play().catch(()=>{});
 }
 
 /* リセット */
