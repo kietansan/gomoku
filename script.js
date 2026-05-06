@@ -6,6 +6,7 @@ const MARGIN = 40;
 let board = [];
 let canvas, ctx;
 let audio;
+let gameOver = false;
 
 const HOSHI = [
   [3,3],[3,9],
@@ -25,8 +26,16 @@ window.onload = () => {
 
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
 
+  setInfo("あなたの番です");
   draw();
 };
+
+/* =========================
+   UI
+========================= */
+function setInfo(text){
+  document.getElementById("info").textContent = text;
+}
 
 /* =========================
    木目
@@ -102,9 +111,9 @@ function draw(){
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
-      if(!board[y][x]) continue;
-
-      drawStone(x,y,board[y][x]);
+      if(board[y][x]){
+        drawStone(x,y,board[y][x]);
+      }
     }
   }
 }
@@ -147,54 +156,43 @@ function drawStone(x,y,color){
 ========================= */
 document.addEventListener("click",(e)=>{
 
+  if(gameOver) return;
+
   const rect = canvas.getBoundingClientRect();
 
   const x = Math.round((e.clientX - rect.left - MARGIN) / CELL);
   const y = Math.round((e.clientY - rect.top - MARGIN) / CELL);
 
   if(x<0||y<0||x>=SIZE||y>=SIZE) return;
-
   if(board[y][x]) return;
+
+  setInfo("CPU思考中...");
 
   board[y][x]=1;
 
   draw();
   playSound();
 
+  if(checkWin(x,y,1)){
+    setInfo("あなたの勝ち！");
+    gameOver = true;
+    return;
+  }
+
   setTimeout(cpuMove, 200);
 });
 
 /* =========================
-   音
-========================= */
-function playSound(){
-
-  if(!audio) return;
-
-  audio.pause();
-  audio.currentTime = 0;
-
-  audio.play().catch(()=>{});
-}
-
-/* =========================
-   NPC AI（正規化）
+   CPU
 ========================= */
 function cpuMove(){
+
+  if(gameOver) return;
 
   let move = findWinningMove(2);
   if(move) return place(move.x,move.y,2);
 
   move = findWinningMove(1);
-  if(move) return place(move.x,move.y,2);
-
-  move = findOpenThreeBlock();
-  if(move) return place(move.x,move.y,2);
-
-  move = findDoubleThreat(2);
-  if(move) return place(move.x,move.y,2);
-
-  move = findDoubleThreat(1);
   if(move) return place(move.x,move.y,2);
 
   const candidates = generateMoves();
@@ -204,19 +202,21 @@ function cpuMove(){
 
   for(const m of candidates){
 
-    board[m.y][m.x] = 2;
+    board[m.y][m.x]=2;
 
     const score = search(1,3,false);
 
-    board[m.y][m.x] = 0;
+    board[m.y][m.x]=0;
 
-    if(score > bestScore){
-      bestScore = score;
-      best = m;
+    if(score>bestScore){
+      bestScore=score;
+      best=m;
     }
   }
 
   if(best) place(best.x,best.y,2);
+
+  setInfo("あなたの番です");
 }
 
 /* =========================
@@ -301,7 +301,39 @@ function evaluate(){
 }
 
 /* =========================
-   勝ち手（簡易）
+   勝利判定（5連）
+========================= */
+function checkWin(x,y,p){
+
+  const dirs = [
+    [1,0],
+    [0,1],
+    [1,1],
+    [1,-1]
+  ];
+
+  for(const [dx,dy] of dirs){
+
+    let count = 1;
+
+    for(let i=1;i<5;i++){
+      if(board[y+dy*i]?.[x+dx*i]===p) count++;
+      else break;
+    }
+
+    for(let i=1;i<5;i++){
+      if(board[y-dy*i]?.[x-dx*i]===p) count++;
+      else break;
+    }
+
+    if(count>=5) return true;
+  }
+
+  return false;
+}
+
+/* =========================
+   勝ち手
 ========================= */
 function findWinningMove(p){
 
@@ -334,18 +366,32 @@ function place(x,y,p){
   draw();
 
   if(p===2) playSound();
+
+  if(checkWin(x,y,p)){
+    gameOver = true;
+    setInfo(p===1 ? "あなたの勝ち！" : "CPUの勝ち！");
+  }
 }
 
 /* =========================
-   仮（未実装部分ダミー）
+   音
 ========================= */
-function findOpenThreeBlock(){ return null; }
-function findDoubleThreat(){ return null; }
-function checkWin(){ return false; }
+function playSound(){
+
+  if(!audio) return;
+
+  audio.pause();
+  audio.currentTime = 0;
+
+  audio.play().catch(()=>{});
+}
 
 /* リセット */
 window.resetGame = () => {
 
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+  gameOver = false;
+
+  setInfo("あなたの番です");
   draw();
 };
