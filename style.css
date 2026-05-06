@@ -3,14 +3,12 @@ body{
   flex-direction:column;
   align-items:center;
   background:#e8d3a8;
-  font-family:sans-serif;
 }
 
+/* 盤面 */
 #board{
-  display:inline-block;
   margin-top:20px;
-  padding:10px;
-  background:#d8b56a;
+  position:relative;
 }
 
 /* 行 */
@@ -18,18 +16,54 @@ body{
   display:flex;
 }
 
-/* ★ここが「交点」本体 */
+/* 交点 */
 .node{
-  width:34px;
-  height:34px;
+  width:32px;
+  height:32px;
   position:relative;
-  box-sizing:border-box;
-
-  border:1px solid rgba(0,0,0,0.25);
-  background:#d8b56a;
 }
 
-/* 星（交点そのもの） */
+/* ★線を描く（これが重要） */
+.node::before,
+.node::after{
+  content:"";
+  position:absolute;
+  background:#2b1a10;
+}
+
+/* 横線 */
+.node::before{
+  top:50%;
+  left:0;
+  width:100%;
+  height:1px;
+  transform:translateY(-50%);
+}
+
+/* 縦線 */
+.node::after{
+  left:50%;
+  top:0;
+  width:1px;
+  height:100%;
+  transform:translateX(-50%);
+}
+
+/* 外枠補正 */
+.row:first-child .node::before{ display:none; }
+.row:last-child .node::before{ display:none; }
+.node:first-child::after{ display:none; }
+.node:last-child::after{ display:none; }
+
+/* 星 */
+.node.star::marker{}
+.node.star::before,
+.node.star::after{ background:#2b1a10; }
+
+.node.star::after,
+.node.star::before{}
+
+/* 星点 */
 .node.star::after{
   content:"";
   width:6px;
@@ -42,13 +76,12 @@ body{
   transform:translate(-50%,-50%);
 }
 
-/* 石（交点に完全固定） */
+/* 石 */
 .stone{
-  width:24px;
-  height:24px;
+  width:22px;
+  height:22px;
   border-radius:50%;
   position:absolute;
-
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
