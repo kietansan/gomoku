@@ -4,22 +4,34 @@ body{
   background:#f5f5f5;
 }
 
-/* ===== 盤面（13交点用） ===== */
+/* ===== 外枠付き盤面 ===== */
 #board{
   position:relative;
-  width:442px;   /* 34 * 12 + 1補正 */
-  height:442px;
+
+  /* ★余白込みサイズ */
+  width:468px;
+  height:468px;
+
   margin:20px auto;
-  background:#d8b56a;
-  border:2px solid #333;
-  box-shadow:0 4px 12px rgba(0,0,0,0.2);
+  background:#caa15a; /* 外枠色 */
+  border:10px solid #8b5a2b; /* 木枠 */
+  box-shadow:0 6px 18px rgba(0,0,0,0.3);
 }
 
-/* ===== グリッド線（正確13交点用） ===== */
-#board::before{
+/* ===== 内部グリッド領域 ===== */
+#board::before,
+#board::after{
   content:"";
   position:absolute;
-  inset:0;
+  top:10px;
+  left:10px;
+  right:10px;
+  bottom:10px;
+  pointer-events:none;
+}
+
+/* 縦線 */
+#board::before{
   background:
     repeating-linear-gradient(
       to right,
@@ -28,13 +40,10 @@ body{
       rgba(0,0,0,0.45) 34px,
       rgba(0,0,0,0.45) 35px
     );
-  pointer-events:none;
 }
 
+/* 横線 */
 #board::after{
-  content:"";
-  position:absolute;
-  inset:0;
   background:
     repeating-linear-gradient(
       to bottom,
@@ -43,31 +52,16 @@ body{
       rgba(0,0,0,0.45) 34px,
       rgba(0,0,0,0.45) 35px
     );
-  pointer-events:none;
 }
 
-/* ===== 交点（クリック領域） ===== */
+/* ===== 交点（内側にオフセット） ===== */
 .cell{
   position:absolute;
   width:34px;
   height:34px;
-  cursor:default;
-}
 
-/* hoverなし（ノイズ防止） */
-.cell:hover{
-  background:transparent;
-}
-
-/* ===== 星（天元・星） ===== */
-.star{
-  position:absolute;
-  width:6px;
-  height:6px;
-  background:#111;
-  border-radius:50%;
-  transform:translate(-50%,-50%);
-  z-index:1;
+  /* ★ここが重要：外枠分ずらす */
+  transform:translate(10px,10px);
 }
 
 /* ===== 石 ===== */
@@ -76,23 +70,39 @@ body{
   width:26px;
   height:26px;
   border-radius:50%;
+
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
+
   box-shadow:0 2px 4px rgba(0,0,0,0.4);
   z-index:2;
 }
 
+/* 黒 */
 .black{
   background: radial-gradient(circle at 30% 30%, #444, #000);
 }
 
+/* 白 */
 .white{
   background: radial-gradient(circle at 30% 30%, #fff, #ddd);
   border:1px solid #111;
 }
 
-/* ===== UI ===== */
+/* 星 */
+.star{
+  position:absolute;
+  width:6px;
+  height:6px;
+  background:#111;
+  border-radius:50%;
+  z-index:1;
+
+  transform:translate(10px,10px);
+}
+
+/* UI */
 #info{
   margin-top:10px;
   font-size:18px;
@@ -102,13 +112,5 @@ body{
 button{
   margin-top:10px;
   padding:8px 16px;
-  font-size:14px;
   cursor:pointer;
-  border:1px solid #333;
-  background:#fff;
-  border-radius:4px;
-}
-
-button:hover{
-  background:#eee;
 }
