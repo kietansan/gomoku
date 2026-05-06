@@ -1,104 +1,112 @@
-const SIZE = 14;
+const SIZE = 13;      // 交点（重要）
+const GRID = 12;      // マス数
+const CELL = 40;
 
 let board = [];
 let gameOver = false;
 
-const boardEl = document.getElementById("board");
-const infoEl = document.getElementById("info");
+const canvas = document.getElementById("board");
+const ctx = canvas.getContext("2d");
+const info = document.getElementById("info");
 
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
-/* ========================= */
+/* ===== 初期化 ===== */
 function init(){
 
-  boardEl.innerHTML = "";
-
-  board = Array.from({length: SIZE}, () =>
-    Array(SIZE).fill(0)
-  );
-
+  board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
-  infoEl.textContent = "あなたの番です";
 
-  drawGrid();
+  canvas.width = GRID * CELL;
+  canvas.height = GRID * CELL;
+
+  info.textContent = "あなたの番です";
+
+  draw();
 }
 window.resetGame = init;
 
-/* =========================
-   グリッド（クリック直結）
-========================= */
-function drawGrid(){
+/* ===== 交点座標変換 ===== */
+function toPx(i){
+  return i * CELL;
+}
 
-  const step = 420 / (SIZE-1);
+/* ===== 描画 ===== */
+function draw(){
 
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // ① 盤面（12×12の正方形）
+  ctx.fillStyle = "#d8b56a";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // ② 線（12マス → 13交点のうち内側線）
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 1;
+
+  for(let i=0;i<SIZE;i++){
+
+    ctx.beginPath();
+    ctx.moveTo(toPx(i),0);
+    ctx.lineTo(toPx(i),canvas.height);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0,toPx(i));
+    ctx.lineTo(canvas.width,toPx(i));
+    ctx.stroke();
+  }
+
+  // ③ 石
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
-      const cell = document.createElement("div");
-      cell.className = "cell";
+      if(!board[y][x]) continue;
 
-      cell.style.position = "absolute";
-      cell.style.width = "10px";
-      cell.style.height = "10px";
+      ctx.beginPath();
+      ctx.arc(toPx(x),toPx(y),14,0,Math.PI*2);
 
-      cell.style.left = (x * step) + "px";
-      cell.style.top  = (y * step) + "px";
+      if(board[y][x]===1){
+        ctx.fillStyle="#000";
+      }else{
+        ctx.fillStyle="#fff";
+        ctx.strokeStyle="#000";
+        ctx.stroke();
+      }
 
-      cell.onclick = () => click(x,y);
-
-      boardEl.appendChild(cell);
+      ctx.fill();
     }
   }
 }
 
-/* ========================= */
-function click(x,y){
+/* ===== クリック（交点スナップ） ===== */
+canvas.onclick = (e)=>{
 
   if(gameOver) return;
+
+  const rect = canvas.getBoundingClientRect();
+
+  const x = Math.round((e.clientX-rect.left)/CELL);
+  const y = Math.round((e.clientY-rect.top)/CELL);
+
+  if(x<0||y<0||x>=SIZE||y>=SIZE) return;
   if(board[y][x]) return;
 
   place(x,y,1);
+};
 
-  setTimeout(cpuMove,50);
-}
-
-/* ========================= */
+/* ===== 着手 ===== */
 function place(x,y,p){
-
-  board[y][x] = p;
-
-  render();
+  board[y][x]=p;
+  draw();
 
   if(checkWin(x,y,p)){
-    gameOver = true;
-    infoEl.textContent = p===1?"あなたの勝ち":"CPUの勝ち";
+    gameOver=true;
+    info.textContent = p===1?"あなたの勝ち":"CPUの勝ち";
   }
 }
 
-/* ========================= */
-function render(){
-
-  document.querySelectorAll(".stone").forEach(e=>e.remove());
-
-  const cells = document.querySelectorAll(".cell");
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]===0) continue;
-
-      const idx = y*SIZE + x;
-      const cell = cells[idx];
-
-      const stone = document.createElement("div");
-      stone.className = "stone " + (board[y][x]===1?"black":"white");
-
-      cell.appendChild(stone);
-    }
-  }
-}
-
-/* ========================= */
+/* ===== 勝利判定 ===== */
 function checkWin(x,y,p){
 
   for(const [dx,dy] of DIRS){
@@ -121,20 +129,6 @@ function checkWin(x,y,p){
   }
 
   return false;
-}
-
-/* ========================= */
-function cpuMove(){
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(!board[y][x]){
-        place(x,y,2);
-        return;
-      }
-    }
-  }
 }
 
 init();
