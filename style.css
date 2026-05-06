@@ -7,26 +7,21 @@ body{
 }
 
 #board{
-  display:inline-block;
+  position:relative;
+  width:416px;   /* 34px × 13 */
+  height:416px;
   margin-top:20px;
-  padding:10px;
   background:#d8b56a;
-}
-
-/* 1行 */
-.row{
-  display:flex;
+  box-shadow:0 4px 12px rgba(0,0,0,0.3);
 }
 
 /* 交点ノード */
 .node{
+  position:absolute;
   width:34px;
   height:34px;
-  position:relative;
   box-sizing:border-box;
-
   border:1px solid rgba(0,0,0,0.25);
-  background:#d8b56a;
 }
 
 /* 星 */
@@ -37,7 +32,6 @@ body{
   background:#2b1a10;
   border-radius:50%;
   position:absolute;
-
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
@@ -49,17 +43,10 @@ body{
   height:24px;
   border-radius:50%;
   position:absolute;
-
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
 }
 
-.black{
-  background:black;
-}
-
-.white{
-  background:white;
-  border:1px solid #999;
-}
+.black{ background:black; }
+.white{ background:white; border:1px solid #999; }
