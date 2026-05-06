@@ -25,12 +25,38 @@ function playSound(){
   sound.play().catch(()=>{});
 }
 
+/* 星位置 */
+function isStar(x,y){
+  return (
+    (x===3&&y===3)||(x===3&&y===9)||
+    (x===9&&y===3)||(x===9&&y===9)||
+    (x===6&&y===6)
+  );
+}
+
 /* 描画 */
 function draw(){
   boardEl.innerHTML = "";
 
   const grid = document.createElement("div");
   grid.className = "grid";
+
+  const lines = document.createElement("div");
+  lines.className = "lines";
+
+  for(let i=0;i<SIZE;i++){
+    const h=document.createElement("div");
+    h.className="h-line";
+    h.style.top=(i*CELL+CELL/2)+"px";
+    lines.appendChild(h);
+
+    const v=document.createElement("div");
+    v.className="v-line";
+    v.style.left=(i*CELL+CELL/2)+"px";
+    lines.appendChild(v);
+  }
+
+  grid.appendChild(lines);
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -43,6 +69,12 @@ function draw(){
       if(board[y][x]){
         const s=document.createElement("div");
         s.className="stone "+(board[y][x]===1?"black":"white");
+        node.appendChild(s);
+      }
+
+      if(isStar(x,y)){
+        const s=document.createElement("div");
+        s.className="star";
         node.appendChild(s);
       }
 
@@ -106,163 +138,93 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* 候補手 */
-function getMoves(){
-  const moves=[];
-
+/* 両空き3防御 */
+function findOpenThreeBlock(){
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
 
-      let near=false;
-      for(let dy=-2;dy<=2;dy++){
-        for(let dx=-2;dx<=2;dx++){
-          if(board[y+dy]?.[x+dx]){
-            near=true;
-            break;
-          }
-        }
-        if(near) break;
-      }
-
-      if(near){
-        moves.push({x,y});
-      }
-    }
-  }
-
-  return moves.length?moves:[{x:6,y:6}];
-}
-
-/* ===== 両空き3検出 ===== */
-function findOpenThreeBlock(){
-
-  for(let m of getMoves()){
-    board[m.y][m.x] = 1;
-
-    for(const [dx,dy] of DIRS){
-
-      let count=1, open=0;
-
-      let nx=m.x+dx, ny=m.y+dy;
-      while(board[ny]?.[nx]===1){
-        count++; nx+=dx; ny+=dy;
-      }
-      if(board[ny]?.[nx]===0) open++;
-
-      nx=m.x-dx; ny=m.y-dy;
-      while(board[ny]?.[nx]===1){
-        count++; nx-=dx; ny-=dy;
-      }
-      if(board[ny]?.[nx]===0) open++;
-
-      if(count===3 && open===2){
-        board[m.y][m.x] = 0;
-        return m;
-      }
-    }
-
-    board[m.y][m.x] = 0;
-  }
-
-  return null;
-}
-
-/* ===== CPU ===== */
-function cpuMove(){
-
-  // 勝ち
-  for(let m of getMoves()){
-    board[m.y][m.x]=2;
-    if(checkWin(m.x,m.y,2)){
-      board[m.y][m.x]=0;
-      place(m.x,m.y,2);
-      return;
-    }
-    board[m.y][m.x]=0;
-  }
-
-  // 防御
-  for(let m of getMoves()){
-    board[m.y][m.x]=1;
-    if(checkWin(m.x,m.y,1)){
-      board[m.y][m.x]=0;
-      place(m.x,m.y,2);
-      return;
-    }
-    board[m.y][m.x]=0;
-  }
-
-  // ★三連防御（超重要）
-  const block3 = findOpenThreeBlock();
-  if(block3){
-    place(block3.x,block3.y,2);
-    return;
-  }
-
-  // 探索
-  const limit = performance.now()+3000;
-
-  let best=null;
-  let bestScore=-Infinity;
-
-  for(let m of getMoves()){
-    if(performance.now()>limit) break;
-
-    const score = evaluateMove(m.x,m.y,2);
-
-    if(score>bestScore){
-      bestScore=score;
-      best=m;
-    }
-  }
-
-  if(best){
-    place(best.x,best.y,2);
-  }
-}
-
-/* ===== 簡易評価 ===== */
-function evaluateMove(x,y,p){
-  board[y][x]=p;
-  const val = evaluate();
-  board[y][x]=0;
-  return val;
-}
-
-/* ===== 評価 ===== */
-function evaluate(){
-  let score=0;
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      const p=board[y][x];
-      if(!p) continue;
+      board[y][x]=1;
 
       for(const [dx,dy] of DIRS){
         let count=1,open=0;
 
         let nx=x+dx,ny=y+dy;
-        while(board[ny]?.[nx]===p){count++;nx+=dx;ny+=dy;}
+        while(board[ny]?.[nx]===1){count++;nx+=dx;ny+=dy;}
         if(board[ny]?.[nx]===0) open++;
 
         nx=x-dx;ny=y-dy;
-        while(board[ny]?.[nx]===p){count++;nx-=dx;ny-=dy;}
+        while(board[ny]?.[nx]===1){count++;nx-=dx;ny-=dy;}
         if(board[ny]?.[nx]===0) open++;
 
-        let val=0;
-        if(count>=5) val=100000;
-        else if(count===4&&open===2) val=30000;
-        else if(count===4&&open===1) val=10000;
-        else if(count===3&&open===2) val=5000;
-        else if(count===3&&open===1) val=1000;
+        if(count===3 && open===2){
+          board[y][x]=0;
+          return {x,y};
+        }
+      }
 
-        score += (p===2?val:-val);
+      board[y][x]=0;
+    }
+  }
+  return null;
+}
+
+/* CPU */
+function cpuMove(){
+
+  // 勝ち
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]) continue;
+      board[y][x]=2;
+      if(checkWin(x,y,2)){
+        board[y][x]=0;
+        place(x,y,2);
+        return;
+      }
+      board[y][x]=0;
+    }
+  }
+
+  // 防御
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]) continue;
+      board[y][x]=1;
+      if(checkWin(x,y,1)){
+        board[y][x]=0;
+        place(x,y,2);
+        return;
+      }
+      board[y][x]=0;
+    }
+  }
+
+  // 三連防御
+  const b=findOpenThreeBlock();
+  if(b){
+    place(b.x,b.y,2);
+    return;
+  }
+
+  // 適当（中央寄り）
+  let best=null;
+  let bestScore=999;
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]) continue;
+
+      const dist=Math.abs(x-6)+Math.abs(y-6);
+
+      if(dist<bestScore){
+        bestScore=dist;
+        best={x,y};
       }
     }
   }
 
-  return score;
+  if(best) place(best.x,best.y,2);
 }
 
 init();
