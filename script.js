@@ -4,7 +4,7 @@ let board = [];
 let gameOver = false;
 let lastMove = null;
 
-let gameId = 0; // 探索キャンセル用
+let gameId = 0;
 
 const boardEl = document.getElementById("board");
 const infoEl = document.getElementById("info");
@@ -57,7 +57,7 @@ function draw(){
         cell.appendChild(stone);
       }
 
-      if(lastMove?.x===x && lastMove?.y===y){
+      if(lastMove?.x === x && lastMove?.y === y){
         cell.style.outline = "2px solid red";
       }
 
@@ -88,14 +88,123 @@ function playerMove(x,y){
 }
 
 /* =========================
-   CPU（4手読み）
+   CPUメイン（優先順修正版）
 ========================= */
 function cpuMove(id){
   if(gameOver || id !== gameId) return;
 
-  const move = searchBestMove(4);
+  let m;
 
-  if(move) place(move.x, move.y, 2);
+  // ① CPU即勝ち
+  m = findWin(2);
+  if(m) return place(m.x,m.y,2);
+
+  // ② プレイヤー即勝ち防御（5連）
+  m = findWin(1);
+  if(m) return place(m.x,m.y,2);
+
+  // ★③ 3連・4連防御（最重要追加）
+  m = findThreeThreat(1);
+  if(m) return place(m.x,m.y,2);
+
+  // ④ フォーク防御
+  m = findFork(1);
+  if(m) return place(m.x,m.y,2);
+
+  // ⑤ フォーク攻撃
+  m = findFork(2);
+  if(m) return place(m.x,m.y,2);
+
+  // ⑥ 4手読み探索
+  m = searchBestMove(4);
+  if(m) return place(m.x,m.y,2);
+}
+
+/* =========================
+   即勝ち判定
+========================= */
+function findWin(p){
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]) continue;
+
+      board[y][x]=p;
+
+      if(checkWin(x,y,p)){
+        board[y][x]=0;
+        return {x,y};
+      }
+
+      board[y][x]=0;
+    }
+  }
+  return null;
+}
+
+/* =========================
+   ★3連・4連防御（核心）
+========================= */
+function findThreeThreat(p){
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]) continue;
+
+      board[y][x]=p;
+
+      for(const [dx,dy] of DIRS){
+        const {count,open} = line(x,y,dx,dy,p);
+
+        // ★3連は即防御
+        if(count === 3 && open > 0){
+          board[y][x]=0;
+          return {x,y};
+        }
+
+        // ★4連も即防御
+        if(count >= 4){
+          board[y][x]=0;
+          return {x,y};
+        }
+      }
+
+      board[y][x]=0;
+    }
+  }
+
+  return null;
+}
+
+/* =========================
+   フォーク検出
+========================= */
+function findFork(p){
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]) continue;
+
+      board[y][x]=p;
+
+      let threat=0;
+
+      for(const [dx,dy] of DIRS){
+        const {count,open} = line(x,y,dx,dy,p);
+        if(count === 3 && open === 2) threat++;
+      }
+
+      board[y][x]=0;
+
+      if(threat >= 2){
+        return {x,y};
+      }
+    }
+  }
+
+  return null;
 }
 
 /* =========================
@@ -126,7 +235,7 @@ function searchBestMove(depth){
 }
 
 /* =========================
-   ミニマックス（簡易αβ）
+   ミニマックス（αβ軽量）
 ========================= */
 function minimax(depth, turn, alpha, beta){
 
@@ -136,7 +245,8 @@ function minimax(depth, turn, alpha, beta){
 
   const moves = getMoves().slice(0, 6);
 
-  if(turn === 0){ // CPU
+  if(turn === 0){
+
     let best = -Infinity;
 
     for(const m of moves){
@@ -156,7 +266,8 @@ function minimax(depth, turn, alpha, beta){
     return best;
   }
 
-  else { // プレイヤー
+  else {
+
     let best = Infinity;
 
     for(const m of moves){
@@ -202,7 +313,6 @@ function getMoves(){
 
       let score = 0;
 
-      // 中央優先
       score -= (Math.abs(x-c) + Math.abs(y-c));
 
       moves.push({x,y,score});
