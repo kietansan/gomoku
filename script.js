@@ -5,6 +5,11 @@ let gameOver = false;
 const boardEl = document.getElementById("board");
 const infoEl = document.getElementById("info");
 
+function playSound() {
+  const sound = new Audio("1.mp3");
+  sound.play();
+}
+
 function init() {
   board = Array.from({ length: SIZE }, () =>
     Array(SIZE).fill(0)
@@ -31,6 +36,7 @@ function draw() {
 
       row.appendChild(cell);
     }
+
     boardEl.appendChild(row);
   }
 }
@@ -39,6 +45,7 @@ function playerMove(x, y) {
   if (gameOver || board[y][x] !== 0) return;
 
   board[y][x] = 1;
+  playSound();
 
   if (checkWin(x, y, 1)) {
     infoEl.textContent = "あなたの勝ち！";
@@ -50,15 +57,15 @@ function playerMove(x, y) {
   draw();
   infoEl.textContent = "CPU思考中...";
 
-  setTimeout(cpuMove, 100);
+  setTimeout(cpuMove, 150);
 }
 
 function cpuMove() {
   const move = getBestMove();
-
   if (!move) return;
 
   board[move.y][move.x] = 2;
+  playSound();
 
   if (checkWin(move.x, move.y, 2)) {
     infoEl.textContent = "CPUの勝ち";
@@ -72,7 +79,12 @@ function cpuMove() {
 }
 
 function checkWin(x, y, player) {
-  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+  const dirs = [
+    [1, 0],
+    [0, 1],
+    [1, 1],
+    [1, -1]
+  ];
 
   for (let [dx, dy] of dirs) {
     let count = 1;
@@ -120,7 +132,12 @@ function evaluate(player) {
 
   function score(p) {
     let s = 0;
-    const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+    const dirs = [
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [1, -1]
+    ];
 
     for (let y = 0; y < SIZE; y++) {
       for (let x = 0; x < SIZE; x++) {
@@ -134,7 +151,9 @@ function evaluate(player) {
           let ny = y + dy;
 
           while (board[ny]?.[nx] === p) {
-            count++; nx += dx; ny += dy;
+            count++;
+            nx += dx;
+            ny += dy;
           }
           if (board[ny]?.[nx] === 0) open++;
 
@@ -142,7 +161,9 @@ function evaluate(player) {
           ny = y - dy;
 
           while (board[ny]?.[nx] === p) {
-            count++; nx -= dx; ny -= dy;
+            count++;
+            nx -= dx;
+            ny -= dy;
           }
           if (board[ny]?.[nx] === 0) open++;
 
@@ -154,6 +175,7 @@ function evaluate(player) {
         }
       }
     }
+
     return s;
   }
 
@@ -170,26 +192,34 @@ function minimax(depth, alpha, beta, maximizing) {
 
     for (let m of moves) {
       board[m.y][m.x] = 2;
-      let val = minimax(depth - 1, alpha, beta, false);
+
+      const val = minimax(depth - 1, alpha, beta, false);
+
       board[m.y][m.x] = 0;
 
       max = Math.max(max, val);
       alpha = Math.max(alpha, val);
+
       if (beta <= alpha) break;
     }
+
     return max;
   } else {
     let min = Infinity;
 
     for (let m of moves) {
       board[m.y][m.x] = 1;
-      let val = minimax(depth - 1, alpha, beta, true);
+
+      const val = minimax(depth - 1, alpha, beta, true);
+
       board[m.y][m.x] = 0;
 
       min = Math.min(min, val);
       beta = Math.min(beta, val);
+
       if (beta <= alpha) break;
     }
+
     return min;
   }
 }
@@ -203,7 +233,7 @@ function getBestMove() {
   for (let m of moves) {
     board[m.y][m.x] = 2;
 
-    let score = minimax(2, -Infinity, Infinity, false);
+    const score = minimax(2, -Infinity, Infinity, false);
 
     board[m.y][m.x] = 0;
 
