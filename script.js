@@ -39,7 +39,7 @@ function isStar(x,y){
 }
 
 /* =========================
-   描画（交点そのもの）
+   描画（交点）
 ========================= */
 function draw(){
   boardEl.innerHTML = "";
@@ -104,7 +104,6 @@ function place(x,y,p){
    勝利判定
 ========================= */
 function checkWin(x,y,p){
-
   for(const [dx,dy] of DIRS){
     let c = 1;
 
@@ -121,7 +120,6 @@ function checkWin(x,y,p){
 
     if(c >= 5) return true;
   }
-
   return false;
 }
 
