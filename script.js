@@ -10,7 +10,7 @@ const sound = document.getElementById("sound");
 
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
-/* ================= 初期化 ================= */
+/* 初期化 */
 function init(){
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
@@ -19,13 +19,13 @@ function init(){
 }
 window.resetGame = init;
 
-/* ================= 音 ================= */
+/* 音 */
 function playSound(){
   sound.currentTime = 0;
   sound.play().catch(()=>{});
 }
 
-/* ================= 星 ================= */
+/* 星 */
 function isStar(x,y){
   return (
     (x===3&&y===3)||(x===3&&y===9)||
@@ -34,7 +34,7 @@ function isStar(x,y){
   );
 }
 
-/* ================= 描画 ================= */
+/* 描画 */
 function draw(){
   boardEl.innerHTML = "";
 
@@ -60,10 +60,11 @@ function draw(){
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-      const node = document.createElement("div");
+
+      const node=document.createElement("div");
       node.className="node";
-      node.style.gridColumn = x+1;
-      node.style.gridRow = y+1;
+      node.style.gridColumn=x+1;
+      node.style.gridRow=y+1;
 
       if(board[y][x]){
         const s=document.createElement("div");
@@ -83,16 +84,15 @@ function draw(){
 
   boardEl.appendChild(grid);
 
-  /* ★クリック（完全一致） */
-  grid.onclick = (e)=>{
+  grid.onclick=(e)=>{
     if(gameOver) return;
 
-    const rect = grid.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const rect=grid.getBoundingClientRect();
+    const x=e.clientX-rect.left;
+    const y=e.clientY-rect.top;
 
-    const gx = Math.round(x / CELL - 0.5);
-    const gy = Math.round(y / CELL - 0.5);
+    const gx=Math.round(x/CELL-0.5);
+    const gy=Math.round(y/CELL-0.5);
 
     if(gx<0||gy<0||gx>=SIZE||gy>=SIZE) return;
     if(board[gy][gx]) return;
@@ -100,36 +100,35 @@ function draw(){
     place(gx,gy,1);
 
     if(!gameOver){
-      infoEl.textContent = "CPU思考中...";
-      setTimeout(cpuMove, 10);
+      infoEl.textContent="CPU思考中...";
+      setTimeout(cpuMove,10);
     }
   };
 }
 
-/* ================= 着手 ================= */
+/* 着手 */
 function place(x,y,p){
-  board[y][x] = p;
+  board[y][x]=p;
   playSound();
   draw();
 
   if(checkWin(x,y,p)){
-    gameOver = true;
-    infoEl.textContent = p===1 ? "あなたの勝ち" : "CPUの勝ち";
+    gameOver=true;
+    infoEl.textContent=p===1?"あなたの勝ち":"CPUの勝ち";
     return;
   }
 
-  // ★表示修正（ここ重要）
   if(p===2){
-    infoEl.textContent = "あなたの番です";
+    infoEl.textContent="あなたの番です";
   }
 }
 
-/* ================= 勝利判定 ================= */
+/* 勝利判定 */
 function checkWin(x,y,p){
   for(const [dx,dy] of DIRS){
     let c=1;
     for(const d of [-1,1]){
-      let nx=x+dx*d, ny=y+dy*d;
+      let nx=x+dx*d,ny=y+dy*d;
       while(board[ny]?.[nx]===p){
         c++; nx+=dx*d; ny+=dy*d;
       }
@@ -139,28 +138,9 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* ================= CPU（3秒制限・反復深化） ================= */
-function cpuMove(){
-  const timeLimit = performance.now() + 3000;
-
-  let bestMove = null;
-
-  for(let depth=1; depth<=4; depth++){
-    const result = minimax(depth, true, -Infinity, Infinity, timeLimit);
-
-    if(performance.now() > timeLimit) break;
-    if(result.move) bestMove = result.move;
-  }
-
-  if(bestMove){
-    place(bestMove.x, bestMove.y, 2);
-  }
-}
-
-/* ================= 候補手 ================= */
+/* 候補手 */
 function getMoves(){
-  const moves = [];
-
+  const moves=[];
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
@@ -175,114 +155,149 @@ function getMoves(){
         }
         if(near) break;
       }
-
       if(near) moves.push({x,y});
     }
   }
-
-  return moves.length ? moves : [{x:6,y:6}];
+  return moves.length?moves:[{x:6,y:6}];
 }
 
-/* ================= ミニマックス ================= */
-function minimax(depth, isMax, alpha, beta, timeLimit){
+/* 危険検出 */
+function findDanger(player){
+  for(let m of getMoves()){
+    board[m.y][m.x]=player;
+    const s=evaluate();
+    board[m.y][m.x]=0;
 
-  if(performance.now() > timeLimit){
-    return {score:evaluate()};
+    if(player===1 && s<-2000) return m;
+  }
+  return null;
+}
+
+/* CPU */
+function cpuMove(){
+
+  // 勝ち
+  for(let m of getMoves()){
+    board[m.y][m.x]=2;
+    if(checkWin(m.x,m.y,2)){
+      board[m.y][m.x]=0;
+      place(m.x,m.y,2);
+      return;
+    }
+    board[m.y][m.x]=0;
   }
 
-  if(depth===0){
-    return {score:evaluate()};
+  // 防御
+  for(let m of getMoves()){
+    board[m.y][m.x]=1;
+    if(checkWin(m.x,m.y,1)){
+      board[m.y][m.x]=0;
+      place(m.x,m.y,2);
+      return;
+    }
+    board[m.y][m.x]=0;
   }
 
-  const moves = getMoves();
-  let bestMove = null;
+  // 三連防御
+  const d=findDanger(1);
+  if(d){
+    place(d.x,d.y,2);
+    return;
+  }
+
+  // 3秒制限探索
+  const limit=performance.now()+3000;
+  let best=null;
+
+  for(let depth=1;depth<=4;depth++){
+    const r=minimax(depth,true,-Infinity,Infinity,limit);
+    if(performance.now()>limit) break;
+    if(r.move) best=r.move;
+  }
+
+  if(best) place(best.x,best.y,2);
+}
+
+/* ミニマックス */
+function minimax(depth,isMax,alpha,beta,limit){
+
+  if(performance.now()>limit) return {score:evaluate()};
+  if(depth===0) return {score:evaluate()};
+
+  const moves=getMoves();
+  let bestMove=null;
 
   if(isMax){
-    let maxEval = -Infinity;
-
-    for(const m of moves){
-      board[m.y][m.x] = 2;
+    let max=-Infinity;
+    for(let m of moves){
+      board[m.y][m.x]=2;
 
       if(checkWin(m.x,m.y,2)){
-        board[m.y][m.x] = 0;
-        return {score:100000, move:m};
+        board[m.y][m.x]=0;
+        return {score:100000,move:m};
       }
 
-      const evalResult = minimax(depth-1,false,alpha,beta,timeLimit).score;
-      board[m.y][m.x] = 0;
+      const val=minimax(depth-1,false,alpha,beta,limit).score;
+      board[m.y][m.x]=0;
 
-      if(evalResult > maxEval){
-        maxEval = evalResult;
-        bestMove = m;
-      }
-
-      alpha = Math.max(alpha, evalResult);
-      if(beta <= alpha) break;
+      if(val>max){max=val;bestMove=m;}
+      alpha=Math.max(alpha,val);
+      if(beta<=alpha) break;
     }
-
-    return {score:maxEval, move:bestMove};
+    return {score:max,move:bestMove};
 
   }else{
-    let minEval = Infinity;
-
-    for(const m of moves){
-      board[m.y][m.x] = 1;
+    let min=Infinity;
+    for(let m of moves){
+      board[m.y][m.x]=1;
 
       if(checkWin(m.x,m.y,1)){
-        board[m.y][m.x] = 0;
-        return {score:-100000, move:m};
+        board[m.y][m.x]=0;
+        return {score:-100000,move:m};
       }
 
-      const evalResult = minimax(depth-1,true,alpha,beta,timeLimit).score;
-      board[m.y][m.x] = 0;
+      const val=minimax(depth-1,true,alpha,beta,limit).score;
+      board[m.y][m.x]=0;
 
-      if(evalResult < minEval){
-        minEval = evalResult;
-        bestMove = m;
-      }
-
-      beta = Math.min(beta, evalResult);
-      if(beta <= alpha) break;
+      if(val<min){min=val;bestMove=m;}
+      beta=Math.min(beta,val);
+      if(beta<=alpha) break;
     }
-
-    return {score:minEval, move:bestMove};
+    return {score:min,move:bestMove};
   }
 }
 
-/* ================= 評価関数 ================= */
+/* 評価 */
 function evaluate(){
-  let score = 0;
+  let score=0;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-      const p = board[y][x];
+      const p=board[y][x];
       if(!p) continue;
 
-      let val = 0;
-
       for(const [dx,dy] of DIRS){
-        let count = 1;
+        let count=1,open=0;
 
-        let nx=x+dx, ny=y+dy;
-        while(board[ny]?.[nx]===p){
-          count++; nx+=dx; ny+=dy;
-        }
+        let nx=x+dx,ny=y+dy;
+        while(board[ny]?.[nx]===p){count++;nx+=dx;ny+=dy;}
+        if(board[ny]?.[nx]===0) open++;
 
-        nx=x-dx; ny=y-dy;
-        while(board[ny]?.[nx]===p){
-          count++; nx-=dx; ny-=dy;
-        }
+        nx=x-dx;ny=y-dy;
+        while(board[ny]?.[nx]===p){count++;nx-=dx;ny-=dy;}
+        if(board[ny]?.[nx]===0) open++;
 
-        if(count>=5) val += 100000;
-        else if(count===4) val += 10000;
-        else if(count===3) val += 1000;
-        else if(count===2) val += 100;
+        let val=0;
+        if(count>=5) val=100000;
+        else if(count===4&&open===2) val=20000;
+        else if(count===4&&open===1) val=8000;
+        else if(count===3&&open===2) val=4000;
+        else if(count===3&&open===1) val=1000;
+
+        score += (p===2?val:-val);
       }
-
-      score += (p===2 ? val : -val);
     }
   }
-
   return score;
 }
 
