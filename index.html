@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>五目並べ</title>
-
-  <!-- ★これが超重要（CSS読み込み） -->
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>Gomoku</title>
+<link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-  <h1>五目並べ3</h1>
+<h2 id="info">あなたの番です</h2>
 
-  <div id="board"></div>
+<div id="board"></div>
 
-  <div id="info">あなたの番です</div>
-  <button onclick="resetGame()">リセット</button>
+<button onclick="resetGame()">リセット</button>
 
-  <script src="script.js"></script>
+<audio id="sound" src="1.mp3"></audio>
+
+<script src="script.js"></script>
 </body>
 </html>
