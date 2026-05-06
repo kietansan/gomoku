@@ -38,7 +38,7 @@ function setInfo(text){
 }
 
 /* =========================
-   木目
+   木目（軽量化）
 ========================= */
 function drawWood(){
 
@@ -48,23 +48,16 @@ function drawWood(){
   const img = ctx.createImageData(w,h);
   const d = img.data;
 
-  for(let y=0;y<h;y++){
-    for(let x=0;x<w;x++){
+  for(let i=0;i<d.length;i+=4){
 
-      const grain =
-        Math.sin(x*0.08)*10 +
-        Math.sin(x*0.02)*20 +
-        (Math.random()-0.5)*4;
+    const grain = Math.random()*20;
 
-      let base = 216 + grain;
+    const base = 200 + grain;
 
-      const i = (y*w + x)*4;
-
-      d[i]   = base;
-      d[i+1] = 180;
-      d[i+2] = 106;
-      d[i+3] = 255;
-    }
+    d[i]=base;
+    d[i+1]=170;
+    d[i+2]=110;
+    d[i+3]=255;
   }
 
   ctx.putImageData(img,0,0);
@@ -77,37 +70,30 @@ function draw(){
 
   drawWood();
 
-  ctx.strokeStyle = "#333";
-  ctx.lineWidth = 1;
+  ctx.strokeStyle="#333";
+  ctx.lineWidth=1;
 
   for(let i=0;i<SIZE;i++){
 
     ctx.beginPath();
-    ctx.moveTo(MARGIN + i*CELL, MARGIN);
-    ctx.lineTo(MARGIN + i*CELL, MARGIN + GRID*CELL);
+    ctx.moveTo(MARGIN+i*CELL,MARGIN);
+    ctx.lineTo(MARGIN+i*CELL,MARGIN+GRID*CELL);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(MARGIN, MARGIN + i*CELL);
-    ctx.lineTo(MARGIN + GRID*CELL, MARGIN + i*CELL);
+    ctx.moveTo(MARGIN,MARGIN+i*CELL);
+    ctx.lineTo(MARGIN+GRID*CELL,MARGIN+i*CELL);
     ctx.stroke();
   }
 
-  // 星
   for(const [x,y] of HOSHI){
 
     ctx.beginPath();
-    ctx.arc(
-      MARGIN + x*CELL,
-      MARGIN + y*CELL,
-      3,0,Math.PI*2
-    );
-
+    ctx.arc(MARGIN+x*CELL,MARGIN+y*CELL,3,0,Math.PI*2);
     ctx.fillStyle="#222";
     ctx.fill();
   }
 
-  // 石
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) drawStone(x,y,board[y][x]);
@@ -120,45 +106,36 @@ function draw(){
 ========================= */
 function drawStone(x,y,color){
 
-  const cx = MARGIN + x*CELL;
-  const cy = MARGIN + y*CELL;
+  const cx=MARGIN+x*CELL;
+  const cy=MARGIN+y*CELL;
 
-  const grad = ctx.createRadialGradient(
-    cx-4,cy-4,2,
-    cx,cy,16
-  );
+  const g=ctx.createRadialGradient(cx-4,cy-4,2,cx,cy,16);
 
   if(color===1){
-    grad.addColorStop(0,"#666");
-    grad.addColorStop(0.3,"#111");
-    grad.addColorStop(1,"#000");
+    g.addColorStop(0,"#666");
+    g.addColorStop(1,"#000");
   }else{
-    grad.addColorStop(0,"#fff");
-    grad.addColorStop(0.7,"#ddd");
-    grad.addColorStop(1,"#aaa");
+    g.addColorStop(0,"#fff");
+    g.addColorStop(1,"#aaa");
   }
 
   ctx.beginPath();
   ctx.arc(cx,cy,14,0,Math.PI*2);
-
-  ctx.fillStyle = grad;
+  ctx.fillStyle=g;
   ctx.fill();
-
-  ctx.strokeStyle="rgba(0,0,0,0.3)";
-  ctx.stroke();
 }
 
 /* =========================
-   人間入力
+   クリック
 ========================= */
 document.addEventListener("click",(e)=>{
 
   if(gameOver) return;
 
-  const rect = canvas.getBoundingClientRect();
+  const rect=canvas.getBoundingClientRect();
 
-  const x = Math.round((e.clientX - rect.left - MARGIN) / CELL);
-  const y = Math.round((e.clientY - rect.top - MARGIN) / CELL);
+  const x=Math.round((e.clientX-rect.left-MARGIN)/CELL);
+  const y=Math.round((e.clientY-rect.top-MARGIN)/CELL);
 
   if(x<0||y<0||x>=SIZE||y>=SIZE) return;
   if(board[y][x]) return;
@@ -172,45 +149,44 @@ document.addEventListener("click",(e)=>{
 
   if(checkWin(x,y,1)){
     setInfo("あなたの勝ち！");
-    gameOver = true;
+    gameOver=true;
     return;
   }
 
-  setTimeout(cpuMove, 200);
+  setTimeout(cpuMove,50);
 });
 
 /* =========================
-   CPU（正規化AI）
+   CPU（軽量正規化AI）
 ========================= */
 function cpuMove(){
 
   if(gameOver) return;
 
-  let move = findWinningMove(2);
+  let move;
+
+  // ① 即勝ち
+  move = findWinningMove(2);
   if(move) return place(move.x,move.y,2);
 
+  // ② 即死防御
   move = findWinningMove(1);
   if(move) return place(move.x,move.y,2);
 
-  move = findOpenThreeBlock();
-  if(move) return place(move.x,move.y,2);
+  // ③ 候補生成
+  let candidates = generateMoves();
 
-  move = findDoubleThreat(2);
-  if(move) return place(move.x,move.y,2);
+  let best=null;
+  let bestScore=-99999;
 
-  move = findDoubleThreat(1);
-  if(move) return place(move.x,move.y,2);
+  // ⑦ 軽量3手読み（制限付き）
+  for(let i=0;i<candidates.length;i++){
 
-  const candidates = generateMoves();
-
-  let best = null;
-  let bestScore = -Infinity;
-
-  for(const m of candidates){
+    const m=candidates[i];
 
     board[m.y][m.x]=2;
 
-    const score = search(1,3,false);
+    const score=lightSearch(1,2,false);
 
     board[m.y][m.x]=0;
 
@@ -218,6 +194,8 @@ function cpuMove(){
       bestScore=score;
       best=m;
     }
+
+    if(i>15) break; // ★重要：爆発防止
   }
 
   if(best) place(best.x,best.y,2);
@@ -226,38 +204,39 @@ function cpuMove(){
 }
 
 /* =========================
-   3手読み
+   軽量探索（2手読み）
 ========================= */
-function search(depth,maxDepth,isHuman){
+function lightSearch(depth,maxDepth,isHuman){
 
   if(depth===maxDepth) return evaluate();
 
-  const player = isHuman?1:2;
-  const moves = generateMoves();
+  const player=isHuman?1:2;
 
-  let best = isHuman?Infinity:-Infinity;
+  const moves=generateMoves().slice(0,10);
+
+  let best=isHuman?99999:-99999;
 
   for(const m of moves){
 
     board[m.y][m.x]=player;
 
-    const val = search(depth+1,maxDepth,!isHuman);
+    const val=lightSearch(depth+1,maxDepth,!isHuman);
 
     board[m.y][m.x]=0;
 
-    if(isHuman) best = Math.min(best,val);
-    else best = Math.max(best,val);
+    if(isHuman) best=Math.min(best,val);
+    else best=Math.max(best,val);
   }
 
   return best;
 }
 
 /* =========================
-   候補生成
+   候補生成（超制限）
 ========================= */
 function generateMoves(){
 
-  const list = [];
+  const list=[];
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -270,7 +249,7 @@ function generateMoves(){
     }
   }
 
-  return list.length?list:[{x:6,y:6}];
+  return list.slice(0,20);
 }
 
 /* =========================
@@ -289,50 +268,45 @@ function hasNeighbor(x,y){
 }
 
 /* =========================
-   評価
+   評価（軽量）
 ========================= */
 function evaluate(){
 
-  let score = 0;
+  let s=0;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
-      if(board[y][x]===2) score++;
-      if(board[y][x]===1) score--;
+      if(board[y][x]===2) s++;
+      if(board[y][x]===1) s--;
     }
   }
 
-  return score;
+  return s;
 }
 
 /* =========================
-   勝利判定（5連）
+   勝利判定
 ========================= */
 function checkWin(x,y,p){
 
-  const dirs = [
-    [1,0],
-    [0,1],
-    [1,1],
-    [1,-1]
-  ];
+  const d=[[1,0],[0,1],[1,1],[1,-1]];
 
-  for(const [dx,dy] of dirs){
+  for(const [dx,dy] of d){
 
-    let count = 1;
+    let c=1;
 
     for(let i=1;i<5;i++){
-      if(board[y+dy*i]?.[x+dx*i]===p) count++;
+      if(board[y+dy*i]?.[x+dx*i]===p) c++;
       else break;
     }
 
     for(let i=1;i<5;i++){
-      if(board[y-dy*i]?.[x-dx*i]===p) count++;
+      if(board[y-dy*i]?.[x-dx*i]===p) c++;
       else break;
     }
 
-    if(count>=5) return true;
+    if(c>=5) return true;
   }
 
   return false;
@@ -368,14 +342,13 @@ function findWinningMove(p){
 function place(x,y,p){
 
   board[y][x]=p;
-
   draw();
 
   if(p===2) playSound();
 
   if(checkWin(x,y,p)){
-    gameOver = true;
-    setInfo(p===1 ? "あなたの勝ち！" : "CPUの勝ち！");
+    gameOver=true;
+    setInfo(p===1?"あなたの勝ち！":"CPUの勝ち！");
   }
 }
 
@@ -387,17 +360,19 @@ function playSound(){
   if(!audio) return;
 
   audio.pause();
-  audio.currentTime = 0;
+  audio.currentTime=0;
 
   audio.play().catch(()=>{});
 }
 
 /* リセット */
-window.resetGame = () => {
+window.resetGame=()=>{
 
-  board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
-  gameOver = false;
+  board=Array.from({length:SIZE},()=>Array(SIZE).fill(0));
+
+  gameOver=false;
 
   setInfo("あなたの番です");
+
   draw();
 };
