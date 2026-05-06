@@ -2,10 +2,7 @@ const SIZE = 15;
 
 let board = [];
 let gameOver = false;
-
 let cpuTimer = null;
-let gameId = 0;
-
 let lastMove = null;
 
 const boardEl = document.getElementById("board");
@@ -26,23 +23,14 @@ function init(){
 }
 
 /* =========================
-   リセット（完全安定）
+   リセット（重要修正）
 ========================= */
 function resetGame(){
-  gameId++;
   clearTimeout(cpuTimer);
   cpuTimer = null;
-
   gameOver = false;
-  board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
-  lastMove = null;
-
-  infoEl.textContent = "";
-
-  draw();
+  init();
 }
-
-window.resetGame = resetGame;
 
 /* =========================
    描画
@@ -86,45 +74,40 @@ function playerMove(x,y){
 
   if(gameOver) return;
 
-  const id = gameId;
-
-  cpuTimer = setTimeout(() => {
-    if(id !== gameId || gameOver) return;
-    cpuMove(id);
-  }, 80);
+  cpuTimer = setTimeout(cpuMove, 80); // 安定化（10msは危険）
 }
 
 /* =========================
    CPUメイン
 ========================= */
-function cpuMove(id){
-  if(gameOver || id !== gameId) return;
+function cpuMove(){
+  if(gameOver) return;
 
   let m;
 
-  // ① 即勝ち
+  // ★① 即勝ち
   m = findWin(2);
   if(m) return place(m.x,m.y,2);
 
-  // ② 即防御
+  // ★② 即防御
   m = findWin(1);
   if(m) return place(m.x,m.y,2);
 
-  // ③ フォーク防御
+  // ★③ 強い脅威防御（3連・4連）
   m = findThreat(1);
   if(m) return place(m.x,m.y,2);
 
-  // ④ フォーク攻撃
+  // ★④ フォーク
   m = findFork(2);
   if(m) return place(m.x,m.y,2);
 
-  // ⑤ 通常思考
+  // ★⑤ 軽量2手読み
   m = bestMove();
   return place(m.x,m.y,2);
 }
 
 /* =========================
-   勝ち・防御
+   即勝ち・即防御
 ========================= */
 function findWin(p){
   for(let y=0;y<SIZE;y++){
@@ -146,7 +129,7 @@ function findWin(p){
 }
 
 /* =========================
-   脅威検出
+   脅威防御（3連以上）
 ========================= */
 function findThreat(p){
   let best=null;
@@ -159,19 +142,19 @@ function findThreat(p){
 
       board[y][x]=p;
 
-      let score=0;
+      let t=0;
 
       for(const [dx,dy] of DIRS){
         const {count,open} = line(x,y,dx,dy,p);
 
-        if(count>=4) score+=100;
-        else if(count===3 && open===2) score+=10;
+        if(count>=4) t+=100;
+        else if(count===3 && open===2) t+=10;
       }
 
       board[y][x]=0;
 
-      if(score>max){
-        max=score;
+      if(t>max){
+        max=t;
         best={x,y};
       }
     }
@@ -192,16 +175,16 @@ function findFork(p){
 
       board[y][x]=p;
 
-      let f=0;
+      let fork=0;
 
       for(const [dx,dy] of DIRS){
         const {count,open} = line(x,y,dx,dy,p);
-        if(count===3 && open===2) f++;
+        if(count===3 && open===2) fork++;
       }
 
       board[y][x]=0;
 
-      if(f>=2) return {x,y};
+      if(fork>=2) return {x,y};
     }
   }
 
@@ -209,47 +192,11 @@ function findFork(p){
 }
 
 /* =========================
-   改良候補生成（重要）
-========================= */
-function getMoves(){
-  const moves=[];
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]) continue;
-
-      let near=false;
-      let score=0;
-
-      for(let dy=-2;dy<=2;dy++){
-        for(let dx=-2;dx<=2;dx++){
-          if(board[y+dy]?.[x+dx]){
-            near=true;
-            score++;
-          }
-        }
-      }
-
-      if(!near) continue;
-
-      // 中央寄り加点
-      const c = SIZE/2;
-      score -= (Math.abs(x-c)+Math.abs(y-c));
-
-      moves.push({x,y,score});
-    }
-  }
-
-  return moves.sort((a,b)=>b.score-a.score).slice(0,12);
-}
-
-/* =========================
-   最終手選択
+   軽量2手読み
 ========================= */
 function bestMove(){
 
-  const moves = getMoves();
+  const moves = getMoves().slice(0,6);
 
   let best=null;
   let bestScore=-Infinity;
@@ -307,6 +254,52 @@ function opponentRisk(p){
 }
 
 /* =========================
+   候補手
+========================= */
+function getMoves(){
+  const moves=[];
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]) continue;
+
+      let near=false;
+
+      for(let dy=-2;dy<=2;dy++){
+        for(let dx=-2;dx<=2;dx++){
+          if(board[y+dy]?.[x+dx]) near=true;
+        }
+      }
+
+      if(near || (x===7 && y===7)){
+        moves.push({x,y});
+      }
+    }
+  }
+
+  return moves.sort((a,b)=>moveScore(b)-moveScore(a)).slice(0,8);
+}
+
+/* =========================
+   手評価
+========================= */
+function moveScore(m){
+  board[m.y][m.x]=2;
+
+  let s=0;
+
+  for(const [dx,dy] of DIRS){
+    const {count}=line(m.x,m.y,dx,dy,2);
+    s+=count*100;
+  }
+
+  board[m.y][m.x]=0;
+
+  return s;
+}
+
+/* =========================
    評価
 ========================= */
 function evaluate(p){
@@ -353,7 +346,7 @@ function line(x,y,dx,dy,p){
 }
 
 /* =========================
-   勝利
+   勝利判定
 ========================= */
 function checkWin(x,y,p){
   for(const [dx,dy] of DIRS){
