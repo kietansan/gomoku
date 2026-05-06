@@ -1,55 +1,58 @@
-function draw(){
+body{
+  text-align:center;
+  font-family:sans-serif;
+}
 
-  boardEl.innerHTML = "";
+#board{
+  position:relative;
+  width:442px;
+  height:442px;
+  margin:20px auto;
+  background:#d8b56a;
+  border:2px solid #333;
+}
 
-  /* 線 */
-  for(let i=0;i<SIZE;i++){
+/* 線 */
+.line{
+  position:absolute;
+  background:#333;
+  pointer-events:none;
+}
 
-    const h=document.createElement("div");
-    h.className="line h-line";
-    h.style.top=(i*CELL+CELL/2)+"px";
-    boardEl.appendChild(h);
+.h-line{
+  height:1px;
+  width:100%;
+}
 
-    const v=document.createElement("div");
-    v.className="line v-line";
-    v.style.left=(i*CELL+CELL/2)+"px";
-    boardEl.appendChild(v);
-  }
+.v-line{
+  width:1px;
+  height:100%;
+}
 
-  /* 交点 */
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
+/* 交点 */
+.cell{
+  position:absolute;
+  width:34px;
+  height:34px;
+  cursor:pointer;
+}
 
-      const cell=document.createElement("div");
-      cell.className="cell";
-      cell.style.left=(x*CELL)+"px";
-      cell.style.top=(y*CELL)+"px";
+/* 石 */
+.stone{
+  position:absolute;
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+}
 
-      // 星
-      if(isStar(x,y)){
-        const s=document.createElement("div");
-        s.className="star";
-        cell.appendChild(s);
-      }
+.black{
+  background:#000;
+}
 
-      // 石
-      if(board[y][x]){
-        const s=document.createElement("div");
-        s.className="stone "+(board[y][x]===1?"black":"white");
-        cell.appendChild(s);
-      }
-
-      cell.onclick=()=>{
-        if(gameOver || board[y][x]) return;
-
-        place(x,y,1);
-
-        if(!gameOver){
-          setTimeout(cpuMove,50);
-        }
-      };
-
-      boardEl.appendChild(cell);
-    }
-  }
+.white{
+  background:#fff;
+  border:1px solid #000;
 }
