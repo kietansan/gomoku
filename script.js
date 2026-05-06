@@ -1,12 +1,11 @@
-const SIZE = 12; // 線は12×12
+const SIZE = 12;
+const POINTS = 13;
 
 let board = [];
 let gameOver = false;
 
 const boardEl = document.getElementById("board");
 const infoEl = document.getElementById("info");
-
-const POINTS = 13; // 交点は +1
 
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
@@ -15,7 +14,6 @@ function init(){
 
   boardEl.innerHTML = "";
 
-  // 交点は14×14
   board = Array.from({length: POINTS}, () =>
     Array(POINTS).fill(0)
   );
@@ -24,11 +22,12 @@ function init(){
   infoEl.textContent = "あなたの番です";
 
   drawGrid();
+  drawPoints(); // ★これが重要
 }
 window.resetGame = init;
 
 /* =========================
-   12×12セル（線用）
+   12×12見た目
 ========================= */
 function drawGrid(){
 
@@ -44,8 +43,34 @@ function drawGrid(){
 }
 
 /* =========================
-   クリック（交点）
+   14点クリックレイヤー（超重要）
 ========================= */
+function drawPoints(){
+
+  for(let y=0;y<POINTS;y++){
+    for(let x=0;x<POINTS;x++){
+
+      const p = document.createElement("div");
+      p.className = "point";
+
+      p.style.position = "absolute";
+      p.style.width = "0";
+      p.style.height = "0";
+
+      // ★座標補正（ここ重要）
+      const step = 420 / SIZE;
+
+      p.style.left = (x * step) + "px";
+      p.style.top  = (y * step) + "px";
+
+      p.onclick = () => click(x,y);
+
+      boardEl.appendChild(p);
+    }
+  }
+}
+
+/* ========================= */
 function click(x,y){
 
   if(gameOver) return;
@@ -64,18 +89,16 @@ function place(x,y,p){
 
   if(checkWin(x,y,p)){
     gameOver = true;
-    infoEl.textContent = p===1 ? "あなたの勝ち" : "CPUの勝ち";
+    infoEl.textContent = p===1?"あなたの勝ち":"CPUの勝ち";
   }
 }
 
-/* =========================
-   描画（交点ベース）
-========================= */
+/* ========================= */
 function render(){
 
   document.querySelectorAll(".stone").forEach(e=>e.remove());
 
-  const cells = document.querySelectorAll(".point");
+  const points = document.querySelectorAll(".point");
 
   for(let y=0;y<POINTS;y++){
     for(let x=0;x<POINTS;x++){
@@ -83,19 +106,17 @@ function render(){
       if(board[y][x]===0) continue;
 
       const idx = y*POINTS + x;
-      const cell = cells[idx];
+      const base = points[idx];
 
       const stone = document.createElement("div");
       stone.className = "stone " + (board[y][x]===1?"black":"white");
 
-      cell.appendChild(stone);
+      base.appendChild(stone);
     }
   }
 }
 
-/* =========================
-   勝利判定
-========================= */
+/* ========================= */
 function checkWin(x,y,p){
 
   for(const [dx,dy] of DIRS){
@@ -120,9 +141,7 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* =========================
-   CPU（簡易）
-========================= */
+/* ========================= */
 function cpuMove(){
 
   for(let y=0;y<POINTS;y++){
