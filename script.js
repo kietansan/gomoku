@@ -2,7 +2,10 @@ const SIZE = 15;
 
 let board = [];
 let gameOver = false;
+
 let cpuTimer = null;
+let turnId = 0;
+
 let lastMove = null;
 
 const boardEl = document.getElementById("board");
@@ -23,11 +26,13 @@ function init(){
 }
 
 /* =========================
-   リセット（重要修正）
+   リセット（完全修正版）
 ========================= */
 function resetGame(){
+  turnId++;                 // ★旧CPU完全無効化
   clearTimeout(cpuTimer);
   cpuTimer = null;
+
   gameOver = false;
   init();
 }
@@ -74,14 +79,19 @@ function playerMove(x,y){
 
   if(gameOver) return;
 
-  cpuTimer = setTimeout(cpuMove, 80); // 安定化（10msは危険）
+  const id = ++turnId;
+
+  cpuTimer = setTimeout(() => {
+    if(id !== turnId || gameOver) return; // ★古いCPU完全無効
+    cpuMove(id);
+  }, 80);
 }
 
 /* =========================
    CPUメイン
 ========================= */
-function cpuMove(){
-  if(gameOver) return;
+function cpuMove(id){
+  if(gameOver || id !== turnId) return;
 
   let m;
 
@@ -93,7 +103,7 @@ function cpuMove(){
   m = findWin(1);
   if(m) return place(m.x,m.y,2);
 
-  // ★③ 強い脅威防御（3連・4連）
+  // ★③ 脅威防御（3連・4連）
   m = findThreat(1);
   if(m) return place(m.x,m.y,2);
 
@@ -101,7 +111,7 @@ function cpuMove(){
   m = findFork(2);
   if(m) return place(m.x,m.y,2);
 
-  // ★⑤ 軽量2手読み
+  // ★⑤ 軽量評価
   m = bestMove();
   return place(m.x,m.y,2);
 }
@@ -129,7 +139,7 @@ function findWin(p){
 }
 
 /* =========================
-   脅威防御（3連以上）
+   脅威防御
 ========================= */
 function findThreat(p){
   let best=null;
@@ -192,7 +202,7 @@ function findFork(p){
 }
 
 /* =========================
-   軽量2手読み
+   軽量評価
 ========================= */
 function bestMove(){
 
