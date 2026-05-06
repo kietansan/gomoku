@@ -7,9 +7,11 @@ let board = [];
 let canvas, ctx;
 let audio;
 
+let gameOver = false;
+let isCpuThinking = false;
+
 const WOOD = "#d8b56a";
 
-/* 星 */
 const HOSHI = [
   [3,3],[3,9],
   [9,3],[9,9],
@@ -22,11 +24,6 @@ window.onload = () => {
   ctx = canvas.getContext("2d");
   audio = document.getElementById("putSound");
 
-  if(!canvas){
-    console.log("canvasが取得できていない");
-    return;
-  }
-
   canvas.width = GRID * CELL + MARGIN * 2;
   canvas.height = GRID * CELL + MARGIN * 2;
 
@@ -34,23 +31,22 @@ window.onload = () => {
 
   draw();
 
-  // ★②③修正：canvas限定クリック
   canvas.addEventListener("click", onClickBoard);
 };
 
-/* ■ クリック処理（分離） */
+/* =========================
+   クリック
+========================= */
 function onClickBoard(e){
+
+  if(gameOver || isCpuThinking) return;
 
   const rect = canvas.getBoundingClientRect();
 
-  // ★②修正：座標を安定化（floor + 中心補正）
   const x = Math.floor((e.clientX - rect.left - MARGIN + CELL/2) / CELL);
   const y = Math.floor((e.clientY - rect.top - MARGIN + CELL/2) / CELL);
 
-  // 範囲外
-  if(x < 0 || y < 0 || x >= SIZE || y >= SIZE) return;
-
-  // 既に置いてある
+  if(x<0||y<0||x>=SIZE||y>=SIZE) return;
   if(board[y][x]) return;
 
   board[y][x] = 1;
@@ -58,20 +54,101 @@ function onClickBoard(e){
   draw();
   playSound();
 
-  // CPU（ある場合）
-  if(typeof cpuMove === "function"){
-    cpuMove();
+  if(checkWin(1)){
+    endGame("あなたの勝ち！");
+    return;
   }
+
+  cpuTurn();
 }
 
-/* ■ 描画 */
+/* =========================
+   CPUターン
+========================= */
+function cpuTurn(){
+
+  isCpuThinking = true;
+  setInfo("CPU思考中...");
+
+  setTimeout(() => {
+
+    let x,y;
+
+    do {
+      x = Math.floor(Math.random()*SIZE);
+      y = Math.floor(Math.random()*SIZE);
+    } while(board[y][x] !== 0);
+
+    board[y][x] = 2;
+
+    draw();
+    playSound();
+
+    if(checkWin(2)){
+      endGame("CPUの勝ち！");
+      return;
+    }
+
+    isCpuThinking = false;
+    setInfo("あなたの番です");
+
+  }, 300);
+}
+
+/* =========================
+   勝敗判定（5連）
+========================= */
+function checkWin(player){
+
+  const DIR = [
+    [1,0],[0,1],[1,1],[1,-1]
+  ];
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x] !== player) continue;
+
+      for(const [dx,dy] of DIR){
+
+        let count = 1;
+
+        for(let i=1;i<5;i++){
+          const nx = x + dx*i;
+          const ny = y + dy*i;
+
+          if(nx<0||ny<0||nx>=SIZE||ny>=SIZE) break;
+          if(board[ny][nx] !== player) break;
+
+          count++;
+        }
+
+        if(count >= 5) return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/* =========================
+   終了
+========================= */
+function endGame(text){
+
+  gameOver = true;
+  setInfo(text);
+}
+
+/* =========================
+   描画
+========================= */
 function draw(){
 
   ctx.fillStyle = WOOD;
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
   ctx.strokeStyle = "#333";
-  ctx.lineWidth = 1;
 
   for(let i=0;i<SIZE;i++){
 
@@ -86,19 +163,14 @@ function draw(){
     ctx.stroke();
   }
 
-  // 星
   for(const [x,y] of HOSHI){
+
     ctx.beginPath();
-    ctx.arc(
-      MARGIN + x*CELL,
-      MARGIN + y*CELL,
-      3,0,Math.PI*2
-    );
+    ctx.arc(MARGIN + x*CELL, MARGIN + y*CELL, 3,0,Math.PI*2);
     ctx.fillStyle="#222";
     ctx.fill();
   }
 
-  // 石
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) drawStone(x,y,board[y][x]);
@@ -106,16 +178,15 @@ function draw(){
   }
 }
 
-/* ■ 石 */
+/* =========================
+   石
+========================= */
 function drawStone(x,y,color){
 
   const cx = MARGIN + x*CELL;
   const cy = MARGIN + y*CELL;
 
-  const grad = ctx.createRadialGradient(
-    cx-4,cy-4,2,
-    cx,cy,16
-  );
+  const grad = ctx.createRadialGradient(cx-4,cy-4,2,cx,cy,16);
 
   if(color===1){
     grad.addColorStop(0,"#666");
@@ -136,21 +207,34 @@ function drawStone(x,y,color){
   ctx.stroke();
 }
 
-/* ■ 音 */
+/* =========================
+   UI
+========================= */
+function setInfo(text){
+  document.getElementById("info").innerText = text;
+}
+
+/* =========================
+   音
+========================= */
 function playSound(){
 
   if(!audio) return;
 
   audio.currentTime = 0;
-
-  audio.play().catch(err=>{
-    console.log("音エラー:", err);
-  });
+  audio.play().catch(()=>{});
 }
 
-/* ■ リセット */
+/* =========================
+   リセット
+========================= */
 window.resetGame = () => {
 
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+  gameOver = false;
+  isCpuThinking = false;
+
+  setInfo("あなたの番です");
+
   draw();
 };
