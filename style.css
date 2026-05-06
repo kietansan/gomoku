@@ -1,3 +1,9 @@
+body{
+  text-align:center;
+  font-family:sans-serif;
+  background:#e6e6e6;
+}
+
 #board{
   position:relative;
 
@@ -9,39 +15,56 @@
   background:#d8b56a;
 
   border:4px solid #3a2a14;
-
-  display:grid;
-  grid-template-columns:repeat(12, 1fr);
-  grid-template-rows:repeat(12, 1fr);
 }
 
-/* 12×12線 */
-.cell{
-  position:relative;
-  border-right:1px solid rgba(0,0,0,0.35);
-  border-bottom:1px solid rgba(0,0,0,0.35);
+/* 線（固定描画） */
+#board::before{
+  content:"";
+  position:absolute;
+  inset:0;
+
+  background:
+    repeating-linear-gradient(to right,
+      transparent,
+      transparent 32px,
+      rgba(0,0,0,0.4) 32px,
+      rgba(0,0,0,0.4) 33px
+    );
 }
 
-/* 右下消す */
-.cell:nth-child(12n){
-  border-right:none;
-}
-.cell:nth-last-child(-n+12){
-  border-bottom:none;
+#board::after{
+  content:"";
+  position:absolute;
+  inset:0;
+
+  background:
+    repeating-linear-gradient(to bottom,
+      transparent,
+      transparent 32px,
+      rgba(0,0,0,0.4) 32px,
+      rgba(0,0,0,0.4) 33px
+    );
 }
 
-/* 交点レイヤー */
 .point{
   position:absolute;
+  width:0;
+  height:0;
 }
 
-/* 石 */
 .stone{
   position:absolute;
-  width:80%;
-  height:80%;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
+  width:26px;
+  height:26px;
   border-radius:50%;
+  transform:translate(-50%,-50%);
+}
+
+.black{
+  background:#000;
+}
+
+.white{
+  background:#fff;
+  border:1px solid #000;
 }
