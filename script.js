@@ -1,5 +1,6 @@
 const SIZE = 13;
 const CELL = 34;
+const MAX_DEPTH = 3;
 
 let board = [];
 let gameOver = false;
@@ -22,20 +23,6 @@ window.resetGame = init;
 function draw(){
   boardEl.innerHTML = "";
 
-  /* 線 */
-  for(let i=0;i<SIZE;i++){
-    const h=document.createElement("div");
-    h.className="line h-line";
-    h.style.top=(i*CELL+CELL/2)+"px";
-    boardEl.appendChild(h);
-
-    const v=document.createElement("div");
-    v.className="line v-line";
-    v.style.left=(i*CELL+CELL/2)+"px";
-    boardEl.appendChild(v);
-  }
-
-  /* 交点 */
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
@@ -44,22 +31,20 @@ function draw(){
       cell.style.left=(x*CELL)+"px";
       cell.style.top=(y*CELL)+"px";
 
-      /* 星 */
-      if(isStar(x,y)){
-        const s=document.createElement("div");
-        s.className="star";
-        cell.appendChild(s);
-      }
-
-      /* 石 */
       if(board[y][x]){
         const stone=document.createElement("div");
         stone.className="stone "+(board[y][x]===1?"black":"white");
         cell.appendChild(stone);
       }
 
+      if(isStar(x,y)){
+        const s=document.createElement("div");
+        s.className="star";
+        cell.appendChild(s);
+      }
+
       cell.onclick=()=>{
-        if(gameOver || board[y][x]) return;
+        if(gameOver||board[y][x]) return;
 
         place(x,y,1);
 
@@ -74,7 +59,7 @@ function draw(){
   }
 }
 
-/* ===== 星位置 ===== */
+/* ===== 星 ===== */
 function isStar(x,y){
   return (
     (x===3&&y===3)||(x===3&&y===9)||
@@ -90,13 +75,13 @@ function place(x,y,p){
 
   if(checkWin(x,y,p)){
     gameOver=true;
-    infoEl.textContent = p===1?"あなたの勝ち":"CPUの勝ち";
+    infoEl.textContent=p===1?"あなたの勝ち":"CPUの勝ち";
   }else if(p===2){
     infoEl.textContent="あなたの番です";
   }
 }
 
-/* ===== 勝利 ===== */
+/* ===== 勝利判定 ===== */
 function checkWin(x,y,p){
   for(const [dx,dy] of DIRS){
     let c=1;
@@ -113,11 +98,9 @@ function checkWin(x,y,p){
 
 /* ===== 危険検出 ===== */
 function isDanger(x,y,p){
-
   board[y][x]=p;
 
   for(const [dx,dy] of DIRS){
-
     let count=1,open=0;
 
     let nx=x+dx,ny=y+dy;
@@ -145,7 +128,6 @@ function countThreats(x,y,p){
   board[y][x]=p;
 
   for(const [dx,dy] of DIRS){
-
     let count=1,open=0;
 
     let nx=x+dx,ny=y+dy;
@@ -168,7 +150,6 @@ function evalPos(x,y,p){
   let score=0;
 
   for(const [dx,dy] of DIRS){
-
     let count=1,open=0;
 
     let nx=x+dx,ny=y+dy;
@@ -188,6 +169,79 @@ function evalPos(x,y,p){
   return score;
 }
 
+/* ===== 中央ボーナス ===== */
+function centerScore(x,y){
+  const c = (SIZE-1)/2;
+  return 10 - (Math.abs(x-c)+Math.abs(y-c));
+}
+
+/* ===== 候補手 ===== */
+function getMoves(){
+  const list=[];
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]) continue;
+
+      let near=false;
+      for(let dy=-2;dy<=2;dy++){
+        for(let dx=-2;dx<=2;dx++){
+          if(board[y+dy]?.[x+dx]) near=true;
+        }
+      }
+
+      if(!near) continue;
+
+      const score =
+        evalPos(x,y,2)*1.2 +
+        evalPos(x,y,1) +
+        centerScore(x,y);
+
+      list.push({x,y,score});
+    }
+  }
+
+  list.sort((a,b)=>b.score-a.score);
+  return list.slice(0,8);
+}
+
+/* ===== ネガマックス（3手読み） ===== */
+function negamax(depth, player){
+
+  if(depth===0) return evaluateBoard();
+
+  const moves = getMoves();
+  let best = -Infinity;
+
+  for(let m of moves){
+
+    board[m.y][m.x]=player;
+
+    const val = -negamax(depth-1, 3-player);
+
+    board[m.y][m.x]=0;
+
+    if(val>best) best=val;
+  }
+
+  return best;
+}
+
+/* ===== 全体評価 ===== */
+function evaluateBoard(){
+  let s=0;
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]===2) s+=evalPos(x,y,2);
+      if(board[y][x]===1) s-=evalPos(x,y,1);
+    }
+  }
+
+  return s;
+}
+
 /* ===== CPU ===== */
 function cpuMove(){
 
@@ -205,7 +259,7 @@ function cpuMove(){
     }
   }
 
-  // 防御
+  // 即防御
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
@@ -241,19 +295,23 @@ function cpuMove(){
     }
   }
 
-  // 評価
-  let best=null, bestScore=-Infinity;
+  // ★3手読み
+  const moves = getMoves();
 
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(board[y][x]) continue;
+  let best=null;
+  let bestScore=-Infinity;
 
-      const s = evalPos(x,y,2) + evalPos(x,y,1);
+  for(let m of moves){
 
-      if(s>bestScore){
-        bestScore=s;
-        best={x,y};
-      }
+    board[m.y][m.x]=2;
+
+    const score = -negamax(MAX_DEPTH-1,1);
+
+    board[m.y][m.x]=0;
+
+    if(score>bestScore){
+      bestScore=score;
+      best=m;
     }
   }
 
