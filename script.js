@@ -108,77 +108,121 @@ document.addEventListener("click",(e)=>{
 });
 
 /* ================= CPU ================= */
-
 function cpuMove(){
   if(gameOver) return;
 
-  let move=null;
+  const candidates = getAllEmptyCells();
+  let best = null;
+  let maxScore = -Infinity;
 
-  // ①即勝ち
-  move=findImmediateWin(2);
-  if(move) return place(move,2);
+  for(const pos of candidates){
+    const score = evaluateMove(pos,2);
+    if(score>maxScore){
+      maxScore = score;
+      best = pos;
+    }
+  }
 
-  // ②即防御
-  move=findImmediateWin(1);
-  if(move) return place(move,2);
-
-  // ③両端空き3連防御
-  move=findDoubleEnded3(1);
-  if(move) return place(move,2);
-
-  // ④攻撃的両端3連
-  move=findDoubleEnded3(2);
-  if(move) return place(move,2);
-
-  // ⑤ランダム（全空き）
-  move=randomMove();
-  place(move,2);
+  if(best) place(best,2);
 }
 
-// 即勝ち・即防御
-function findImmediateWin(p){
-  const list=getAllEmptyCells();
-  for(const pos of list){
-    board[pos.y][pos.x]=p;
-    if(checkWin(pos.x,pos.y,p)){
-      board[pos.y][pos.x]=0;
-      return pos;
-    }
+/* 評価関数（正規化AI順序） */
+function evaluateMove(pos,p){
+  let score = 0;
+  const opp = (p===1)?2:1;
+
+  // ① 即勝ち
+  board[pos.y][pos.x]=p;
+  if(checkWin(pos.x,pos.y,p)){
     board[pos.y][pos.x]=0;
+    return 100000;
   }
-  return null;
+  board[pos.y][pos.x]=0;
+
+  // ② 即死防御（4連）
+  board[pos.y][pos.x]=opp;
+  if(checkWin(pos.x,pos.y,opp)){
+    board[pos.y][pos.x]=0;
+    return 90000;
+  }
+  board[pos.y][pos.x]=0;
+
+  // ③ 危険形防御（両端3連）
+  if(isDoubleEnded3(pos,opp)) return 50000;
+
+  // ④ ダブル脅威（攻め）
+  if(isDoubleEnded3(pos,p)) return 40000;
+
+  // ⑤ ダブル脅威防御
+  if(isTwoThreats(pos,opp)) return 30000;
+
+  // ⑥ 候補生成/周囲優先
+  score = evaluateLinePotential(pos,p);
+
+  return score;
 }
 
-// 両端3連防御/攻撃
-function findDoubleEnded3(p){
-  const list=getAllEmptyCells();
+// 両端3連検出
+function isDoubleEnded3(pos,p){
   const dirs=[[1,0],[0,1],[1,1],[1,-1]];
-  for(const pos of list){
-    for(const [dx,dy] of dirs){
-      let count=1;
-      let emptyBefore=false, emptyAfter=false;
-
-      // 前方向
-      for(let i=1;i<=2;i++){
-        const nx=pos.x-dx*i, ny=pos.y-dy*i;
-        if(board[ny]?.[nx]===p) count++;
-        else if(board[ny]?.[nx]===0) { emptyBefore=true; break;}
-        else break;
-      }
-      // 後方向
-      for(let i=1;i<=2;i++){
-        const nx=pos.x+dx*i, ny=pos.y+dy*i;
-        if(board[ny]?.[nx]===p) count++;
-        else if(board[ny]?.[nx]===0) { emptyAfter=true; break;}
-        else break;
-      }
-
-      if(count===3 && emptyBefore && emptyAfter){
-        return pos;
-      }
+  for(const [dx,dy] of dirs){
+    let count=1;
+    let emptyBefore=false, emptyAfter=false;
+    for(let i=1;i<=2;i++){
+      const nx=pos.x-dx*i, ny=pos.y-dy*i;
+      if(board[ny]?.[nx]===p) count++;
+      else if(board[ny]?.[nx]===0){emptyBefore=true; break;}
+      else break;
     }
+    for(let i=1;i<=2;i++){
+      const nx=pos.x+dx*i, ny=pos.y+dy*i;
+      if(board[ny]?.[nx]===p) count++;
+      else if(board[ny]?.[nx]===0){emptyAfter=true; break;}
+      else break;
+    }
+    if(count===3 && emptyBefore && emptyAfter) return true;
   }
-  return null;
+  return false;
+}
+
+// 2方向3連脅威（簡易）
+function isTwoThreats(pos,p){
+  let cnt=0;
+  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
+  for(const [dx,dy] of dirs){
+    let count=1;
+    for(let i=1;i<2;i++){
+      const nx=pos.x+dx*i, ny=pos.y+dy*i;
+      if(board[ny]?.[nx]===p) count++;
+      else break;
+    }
+    for(let i=1;i<2;i++){
+      const nx=pos.x-dx*i, ny=pos.y-dy*i;
+      if(board[ny]?.[nx]===p) count++;
+      else break;
+    }
+    if(count===3) cnt++;
+  }
+  return cnt>=2;
+}
+
+// ライン潜在評価（周囲優先）
+function evaluateLinePotential(pos,p){
+  let score = 0;
+  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
+  for(const [dx,dy] of dirs){
+    let count=0;
+    for(let i=1;i<=2;i++){
+      const nx=pos.x+dx*i, ny=pos.y+dy*i;
+      if(board[ny]?.[nx]===p) count++;
+    }
+    for(let i=1;i<=2;i++){
+      const nx=pos.x-dx*i, ny=pos.y-dy*i;
+      if(board[ny]?.[nx]===p) count++;
+    }
+    score += count*10;
+  }
+  return score;
 }
 
 // 全空きマス
@@ -190,12 +234,6 @@ function getAllEmptyCells(){
     }
   }
   return list;
-}
-
-// ランダム
-function randomMove(){
-  const list=getAllEmptyCells();
-  return list[Math.floor(Math.random()*list.length)];
 }
 
 // 石を置く
@@ -220,31 +258,4 @@ function checkWin(x,y,p){
   for(const [dx,dy] of d){
     let c=1;
     for(let i=1;i<5;i++){
-      if(board[y+dy*i]?.[x+dx*i]===p) c++;
-      else break;
-    }
-    for(let i=1;i<5;i++){
-      if(board[y-dy*i]?.[x-dx*i]===p) c++;
-      else break;
-    }
-    if(c>=5) return true;
-  }
-  return false;
-}
-
-// 音
-function playSound(){
-  if(!audio) return;
-  audio.currentTime=0;
-  audio.play().catch(()=>{});
-}
-
-// リセット
-window.resetGame=()=>{
-  board=Array.from({length:SIZE},()=>Array(SIZE).fill(0));
-  gameOver=false;
-  turn=1;
-  thinking=false;
-  setInfo("あなたの番です");
-  draw();
-};
+      if(board[y
