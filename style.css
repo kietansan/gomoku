@@ -4,38 +4,30 @@ body{
   align-items:center;
   background:#e8d3a8;
   font-family:sans-serif;
-  margin:0;
 }
 
-/* ===== 盤面 ===== */
 #board{
   margin-top:20px;
   display:inline-block;
   padding:10px;
   background:#d8b56a;
-  box-shadow:0 4px 12px rgba(0,0,0,0.3);
 }
 
-/* ===== 行 ===== */
-.row19{
+.row13{
   display:flex;
 }
 
-/* ===== 交点ノード ===== */
-.node19{
-  width:28px;
-  height:28px;
+.node13{
+  width:32px;
+  height:32px;
   position:relative;
-
-  /* これがないと「消えたように見える」原因になる */
   border:1px solid rgba(0,0,0,0.25);
   box-sizing:border-box;
-
   background:#d8b56a;
 }
 
-/* ===== 星（9路＋中心） ===== */
-.node19.star19::after{
+/* 星 */
+.node13.star13::after{
   content:"";
   width:6px;
   height:6px;
@@ -46,19 +38,12 @@ body{
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
-  opacity:0.9;
 }
 
-/* ===== 最後の手 ===== */
-.node19.last{
-  outline:2px solid red;
-  outline-offset:-2px;
-}
-
-/* ===== 石 ===== */
+/* 石 */
 .stone{
-  width:22px;
-  height:22px;
+  width:24px;
+  height:24px;
   border-radius:50%;
   position:absolute;
 
@@ -67,20 +52,10 @@ body{
   transform:translate(-50%,-50%);
 }
 
-.black{
-  background:black;
-  box-shadow: inset 0 2px 4px rgba(255,255,255,0.2);
-}
+.black{ background:black; }
+.white{ background:white; border:1px solid #999; }
 
-.white{
-  background:white;
-  border:1px solid #999;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-}
-
-/* ===== 情報表示 ===== */
-#info{
-  margin-top:10px;
-  font-size:18px;
-  font-weight:bold;
+.node13.last{
+  outline:2px solid red;
+  outline-offset:-2px;
 }
