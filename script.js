@@ -49,11 +49,11 @@ function draw(){
         cell.appendChild(stone);
       }
 
-      if(lastMove?.x === x && lastMove?.y === y){
-        cell.style.outline = "2px solid red";
+      if(lastMove?.x===x && lastMove?.y===y){
+        cell.style.outline="2px solid red";
       }
 
-      cell.onclick = () => playerMove(x,y);
+      cell.onclick=()=>playerMove(x,y);
       row.appendChild(cell);
     }
 
@@ -73,157 +73,85 @@ function playerMove(x,y){
 
   const id = gameId;
 
-  setTimeout(() => {
-    if(gameOver || id !== gameId) return;
+  setTimeout(()=>{
+    if(gameOver || id!==gameId) return;
     cpuMove(id);
-  }, 0);
+  },0);
 }
 
 /* =========================
-   CPUメイン
+   CPU（4手読み）
 ========================= */
 function cpuMove(id){
-  if(gameOver || id !== gameId) return;
+  if(gameOver || id!==gameId) return;
 
-  let m;
+  let move = searchBestMove(2, 4);
 
-  // ① CPU即勝ち
-  m = findWin(2);
-  if(m) return place(m.x,m.y,2);
-
-  // ② プレイヤー即死防御
-  m = findWin(1);
-  if(m) return place(m.x,m.y,2);
-
-  // ③ 超重要防御（3・4・活3）
-  m = findCriticalDefense(1);
-  if(m) return place(m.x,m.y,2);
-
-  // ④ フォーク防御
-  m = findFork(1);
-  if(m) return place(m.x,m.y,2);
-
-  // ⑤ フォーク攻撃
-  m = findFork(2);
-  if(m) return place(m.x,m.y,2);
-
-  // ⑥ 評価
-  m = bestMove();
-  return place(m.x,m.y,2);
+  return place(move.x, move.y, 2);
 }
 
 /* =========================
-   勝ち検出
+   4手読みエンジン（制限付き）
 ========================= */
-function findWin(p){
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
+function searchBestMove(p, depth){
 
-      if(board[y][x]) continue;
+  const moves = getMoves();
 
-      board[y][x]=p;
+  let best = null;
+  let bestScore = -Infinity;
 
-      if(getWinLine(x,y,p)){
-        board[y][x]=0;
-        return {x,y};
-      }
+  for(const m of moves){
 
-      board[y][x]=0;
-    }
-  }
-  return null;
-}
+    board[m.y][m.x] = p;
 
-/* =========================
-   勝利ライン確定
-========================= */
-function getWinLine(x,y,p){
+    let score = minimax(3 - p, depth - 1, false);
 
-  for(const [dx,dy] of DIRS){
+    board[m.y][m.x] = 0;
 
-    let line=[{x,y}];
-
-    let nx=x+dx, ny=y+dy;
-    while(board[ny]?.[nx]===p){
-      line.push({x:nx,y:ny});
-      nx+=dx; ny+=dy;
-    }
-
-    nx=x-dx; ny=y-dy;
-    while(board[ny]?.[nx]===p){
-      line.unshift({x:nx,y:ny});
-      nx-=dx; ny-=dy;
-    }
-
-    if(line.length>=5) return line;
-  }
-
-  return null;
-}
-
-/* =========================
-   超重要防御（ここが核心）
-========================= */
-function findCriticalDefense(p){
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]) continue;
-
-      board[y][x]=p;
-
-      for(const [dx,dy] of DIRS){
-        const len = lineCount(x,y,dx,dy,p);
-        const open = isOpen(x,y,dx,dy,p);
-
-        // 4連 or 両活3は必ず止める
-        if(len>=4 || (len===3 && open===2)){
-          board[y][x]=0;
-          return {x,y};
-        }
-      }
-
-      board[y][x]=0;
+    if(score > bestScore){
+      bestScore = score;
+      best = m;
     }
   }
 
-  return null;
+  return best || moves[0];
 }
 
 /* =========================
-   フォーク
+   擬似ミニマックス（軽量）
 ========================= */
-function findFork(p){
+function minimax(p, depth, isMax){
 
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
+  if(depth === 0) return evaluate(2) - evaluate(1);
 
-      if(board[y][x]) continue;
+  const moves = getMoves();
 
-      board[y][x]=p;
+  let best = isMax ? -Infinity : Infinity;
 
-      let t=0;
+  for(const m of moves){
 
-      for(const [dx,dy] of DIRS){
-        if(lineCount(x,y,dx,dy,p)===3) t++;
-      }
+    board[m.y][m.x] = p;
 
-      board[y][x]=0;
+    let score = minimax(3 - p, depth - 1, !isMax);
 
-      if(t>=2) return {x,y};
+    board[m.y][m.x] = 0;
+
+    if(isMax){
+      if(score > best) best = score;
+    }else{
+      if(score < best) best = score;
     }
   }
 
-  return null;
+  return best;
 }
 
 /* =========================
-   候補制御（端排除の核心）
+   候補手制限（安定の核）
 ========================= */
 function getMoves(){
 
-  const moves=[];
+  const moves = [];
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -238,9 +166,7 @@ function getMoves(){
         }
       }
 
-      if(!near) continue;
-
-      moves.push({x,y});
+      if(near) moves.push({x,y});
     }
   }
 
@@ -248,37 +174,7 @@ function getMoves(){
 }
 
 /* =========================
-   評価（補助）
-========================= */
-function bestMove(){
-
-  const moves=getMoves();
-
-  let best=null;
-  let bestScore=-Infinity;
-
-  for(const m of moves){
-
-    board[m.y][m.x]=2;
-
-    let score =
-      evaluate(2) -
-      evaluate(1)*1.4 -
-      (Math.abs(m.x-7)+Math.abs(m.y-7))*8;
-
-    board[m.y][m.x]=0;
-
-    if(score>bestScore){
-      bestScore=score;
-      best=m;
-    }
-  }
-
-  return best;
-}
-
-/* =========================
-   評価
+   評価関数（安定型）
 ========================= */
 function evaluate(p){
 
@@ -290,7 +186,7 @@ function evaluate(p){
       if(board[y][x]!==p) continue;
 
       for(const [dx,dy] of DIRS){
-        const len=lineCount(x,y,dx,dy,p);
+        const len = lineCount(x,y,dx,dy,p);
 
         if(len>=5) score+=1000000;
         else if(len===4) score+=50000;
@@ -323,13 +219,6 @@ function lineCount(x,y,dx,dy,p){
 }
 
 /* =========================
-   開放
-========================= */
-function isOpen(x,y,dx,dy,p){
-  return board[y+dy]?.[x+dx]===0 || board[y-dy]?.[x-dx]===0;
-}
-
-/* =========================
    着手
 ========================= */
 function place(x,y,p){
@@ -341,14 +230,37 @@ function place(x,y,p){
 
   draw();
 
-  const win=getWinLine(x,y,p);
-
-  if(win){
+  if(getWin(x,y,p)){
     gameOver=true;
-    infoEl.textContent=(p===2?"CPUの勝ち":"あなたの勝ち");
+    infoEl.textContent = (p===2?"CPUの勝ち":"あなたの勝ち");
   }
 
   playSound();
+}
+
+/* =========================
+   勝利判定
+========================= */
+function getWin(x,y,p){
+
+  for(const [dx,dy] of DIRS){
+
+    let c=1;
+
+    for(const d of [-1,1]){
+      let nx=x+dx*d, ny=y+dy*d;
+
+      while(board[ny]?.[nx]===p){
+        c++;
+        nx+=dx*d;
+        ny+=dy*d;
+      }
+    }
+
+    if(c>=5) return true;
+  }
+
+  return false;
 }
 
 /* =========================
