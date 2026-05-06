@@ -5,11 +5,7 @@ const MARGIN = 40;
 
 let board = [];
 let canvas, ctx;
-let audio;
 
-const WOOD = "#d8b56a";
-
-/* 星（13路） */
 const HOSHI = [
   [3,3],[3,9],
   [9,3],[9,9],
@@ -20,7 +16,6 @@ window.onload = () => {
 
   canvas = document.getElementById("board");
   ctx = canvas.getContext("2d");
-  audio = document.getElementById("putSound");
 
   canvas.width = GRID * CELL + MARGIN * 2;
   canvas.height = GRID * CELL + MARGIN * 2;
@@ -30,14 +25,48 @@ window.onload = () => {
   draw();
 };
 
-/* ■ 全描画 */
+/* =========================
+   木目（リアルノイズ）
+========================= */
+function drawWoodBackground(){
+
+  const w = canvas.width;
+  const h = canvas.height;
+
+  const img = ctx.createImageData(w,h);
+  const data = img.data;
+
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+
+      const grain =
+        Math.sin(x * 0.08) * 10 +
+        Math.sin(x * 0.02) * 20 +
+        (Math.random()-0.5)*5;
+
+      let base = 216 + grain;
+
+      const i = (y*w + x)*4;
+
+      data[i]   = base;   // R
+      data[i+1] = 180;    // G
+      data[i+2] = 106;    // B
+      data[i+3] = 255;    // A
+    }
+  }
+
+  ctx.putImageData(img,0,0);
+}
+
+/* =========================
+   描画メイン
+========================= */
 function draw(){
 
-  // 背景（完全フラット木）
-  ctx.fillStyle = WOOD;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // 木目背景
+  drawWoodBackground();
 
-  // 線
+  // 盤線
   ctx.strokeStyle = "#333";
   ctx.lineWidth = 1;
 
@@ -79,7 +108,9 @@ function draw(){
   }
 }
 
-/* ■ リアル石 */
+/* =========================
+   リアル石
+========================= */
 function drawStone(x,y,color){
 
   const cx = MARGIN + x*CELL;
@@ -110,7 +141,9 @@ function drawStone(x,y,color){
   ctx.stroke();
 }
 
-/* ■ クリック */
+/* =========================
+   クリック
+========================= */
 document.addEventListener("click",(e)=>{
 
   const rect = canvas.getBoundingClientRect();
@@ -125,23 +158,9 @@ document.addEventListener("click",(e)=>{
   board[y][x]=1;
 
   draw();
-
-  playSound();
 });
 
-/* ■ 音 */
-function playSound(){
-
-  if(!audio) return;
-
-  audio.currentTime = 0;
-
-  audio.play().catch(err=>{
-    console.log("音再生失敗:", err);
-  });
-}
-
-/* ■ リセット */
+/* リセット */
 window.resetGame = () => {
 
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
