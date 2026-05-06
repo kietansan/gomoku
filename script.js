@@ -13,7 +13,7 @@ const sound = document.getElementById("sound");
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
 /* =========================
-   星（碁盤）
+   星判定（囲碁風）
 ========================= */
 function isStar(x,y){
   return (
@@ -52,7 +52,7 @@ function setInfo(text){
 }
 
 /* =========================
-   描画（星統合済み）
+   描画（星ここで完全統合）
 ========================= */
 function draw(){
   boardEl.innerHTML = "";
@@ -65,7 +65,7 @@ function draw(){
       const cell = document.createElement("div");
       cell.className = "cell";
 
-      // ★星（ここで必ず付与）
+      // ★星はここで毎回描画（重要）
       if(isStar(x,y)){
         cell.classList.add("star");
       }
@@ -105,7 +105,7 @@ function playerMove(x,y){
   setTimeout(()=>{
     if(gameOver || id !== gameId) return;
     cpuMove(id);
-  },50);
+  }, 50);
 }
 
 /* =========================
