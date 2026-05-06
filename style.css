@@ -1,22 +1,19 @@
-body{
-  text-align:center;
-  font-family:sans-serif;
-}
-
-/* 盤 */
 #board{
   position:relative;
-  width:442px;   /* 13×34 */
+  width:442px;
   height:442px;
   margin:20px auto;
-  background:
-    repeating-linear-gradient(90deg,#d8b56a,#d8b56a 8px,#d2aa5a 8px,#d2aa5a 16px),
-    repeating-linear-gradient(0deg,#d8b56a,#d8b56a 8px,#d2aa5a 8px,#d2aa5a 16px);
-  border-radius:12px;
-  box-shadow:0 10px 25px rgba(0,0,0,0.3);
+  background:#d8b56a;
 }
 
-/* 線 */
+/* 線レイヤー */
+.lines{
+  position:absolute;
+  width:100%;
+  height:100%;
+  z-index:1;
+}
+
 .line{
   position:absolute;
   background:#333;
@@ -32,30 +29,31 @@ body{
   height:100%;
 }
 
-/* 交点クリック領域 */
+/* 交点 */
 .cell{
-  position:absolute;  /* ★これが最重要 */
+  position:absolute;
   width:34px;
   height:34px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
+  z-index:2;
 }
 
 /* 石 */
 .stone{
+  position:absolute;
   width:26px;
   height:26px;
   border-radius:50%;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
 }
 
 .black{
-  background:radial-gradient(circle at 30% 30%,#666,#000);
+  background:radial-gradient(#555,#000);
 }
 
 .white{
-  background:radial-gradient(circle at 30% 30%,#fff,#ccc);
+  background:radial-gradient(#fff,#ccc);
   border:1px solid #999;
 }
 
@@ -69,4 +67,5 @@ body{
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
+  z-index:2;
 }
