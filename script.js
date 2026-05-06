@@ -42,8 +42,9 @@ function draw(){
   const lines = document.createElement("div");
   lines.className = "lines";
 
-  /* ★線は交点＝セル中央 */
+  /* ★交点中央に線を置く（これが最重要） */
   for(let i=0;i<SIZE;i++){
+
     const h=document.createElement("div");
     h.className="h-line";
     h.style.top = (i*CELL + CELL/2)+"px";
@@ -57,7 +58,6 @@ function draw(){
 
   grid.appendChild(lines);
 
-  /* ノード */
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
@@ -67,7 +67,6 @@ function draw(){
       node.style.gridColumn = x+1;
       node.style.gridRow = y+1;
 
-      /* 石（必ず交点中央） */
       if(board[y][x]){
         const s=document.createElement("div");
         s.className="stone "+(board[y][x]===1?"black":"white");
@@ -103,7 +102,7 @@ function draw(){
   boardEl.appendChild(grid);
 }
 
-/* CPU簡易 */
+/* CPU（簡易） */
 function cpuMove(){
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -124,15 +123,12 @@ function cpuMove(){
 function checkWin(x,y,p){
   for(const [dx,dy] of DIRS){
     let c=1;
-
     for(const d of [-1,1]){
       let nx=x+dx*d, ny=y+dy*d;
-
       while(board[ny]?.[nx]===p){
         c++; nx+=dx*d; ny+=dy*d;
       }
     }
-
     if(c>=5) return true;
   }
   return false;
