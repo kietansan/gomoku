@@ -17,7 +17,7 @@ function init(){
 }
 
 /* =========================
-   描画（安定版）
+   描画
 ========================= */
 function draw(){
   boardEl.innerHTML = "";
@@ -32,13 +32,7 @@ function draw(){
 
       if(board[y][x] !== 0){
         const stone = document.createElement("div");
-
-        if(board[y][x] === 1){
-          stone.className = "black";
-        } else {
-          stone.className = "white";
-        }
-
+        stone.className = board[y][x] === 1 ? "black" : "white";
         cell.appendChild(stone);
       }
 
@@ -67,28 +61,27 @@ function playerMove(x,y){
   }
 
   draw();
-  setTimeout(cpuMove, 30);
+  setTimeout(cpuMove, 20);
 }
 
 /* =========================
-   CPU（10秒αβ＋安定）
+   CPU（完全強化版）
 ========================= */
 function cpuMove(){
   if(gameOver) return;
 
-  const moves = getMovesSafe();
-  if(!moves.length) return;
-
-  const startTime = performance.now();
+  const start = performance.now();
   const TIME_LIMIT = 10000;
 
+  let moves = getMovesThreatOrdered();
+  if(!moves.length) return;
+
   let bestMove = moves[0];
-  let bestScore = -Infinity;
 
-  for(let depth = 1; depth <= 4; depth++){
+  for(let depth=1; depth<=4; depth++){
 
-    let localBestMove = null;
-    let localBestScore = -Infinity;
+    let localBest = null;
+    let localScore = -Infinity;
 
     for(const m of moves){
 
@@ -96,30 +89,27 @@ function cpuMove(){
 
       const score = minimax(
         3,
-        depth - 1,
+        depth-1,
         -Infinity,
         Infinity,
         false,
-        startTime,
+        start,
         TIME_LIMIT
       );
 
       board[m.y][m.x] = 0;
 
-      if(score > localBestScore){
-        localBestScore = score;
-        localBestMove = m;
+      if(score > localScore){
+        localScore = score;
+        localBest = m;
       }
 
-      if(performance.now() - startTime > TIME_LIMIT) break;
+      if(performance.now() - start > TIME_LIMIT) break;
     }
 
-    if(localBestMove){
-      bestMove = localBestMove;
-      bestScore = localBestScore;
-    }
+    if(localBest) bestMove = localBest;
 
-    if(performance.now() - startTime > TIME_LIMIT) break;
+    if(performance.now() - start > TIME_LIMIT) break;
   }
 
   if(!bestMove) bestMove = {x:7,y:7};
@@ -129,85 +119,69 @@ function cpuMove(){
 }
 
 /* =========================
-   αβミニマックス
+   αβ探索
 ========================= */
-function minimax(player, depth, alpha, beta, isMax, startTime, limit){
+function minimax(player, depth, alpha, beta, isMax, start, limit){
 
   if(depth === 0) return evaluateBoard();
 
-  if(performance.now() - startTime > limit){
+  if(performance.now() - start > limit){
     return evaluateBoard();
   }
 
-  const moves = getMovesSafe();
+  const moves = getMovesThreatOrdered();
 
   if(isMax){
-    let maxEval = -Infinity;
+    let best = -Infinity;
 
     for(const m of moves){
       board[m.y][m.x] = player;
 
       if(checkWin(m.x,m.y,player)){
         board[m.y][m.x] = 0;
-        return 100000;
+        return 1000000;
       }
 
-      const eval = minimax(
-        3 - player,
-        depth - 1,
-        alpha,
-        beta,
-        false,
-        startTime,
-        limit
-      );
+      const val = minimax(3-player, depth-1, alpha, beta, false, start, limit);
 
       board[m.y][m.x] = 0;
 
-      maxEval = Math.max(maxEval, eval);
-      alpha = Math.max(alpha, eval);
+      best = Math.max(best, val);
+      alpha = Math.max(alpha, val);
 
       if(beta <= alpha) break;
     }
 
-    return maxEval;
+    return best;
   }
 
   else {
-    let minEval = Infinity;
+    let best = Infinity;
 
     for(const m of moves){
       board[m.y][m.x] = player;
 
       if(checkWin(m.x,m.y,player)){
         board[m.y][m.x] = 0;
-        return -100000;
+        return -1000000;
       }
 
-      const eval = minimax(
-        3 - player,
-        depth - 1,
-        alpha,
-        beta,
-        true,
-        startTime,
-        limit
-      );
+      const val = minimax(3-player, depth-1, alpha, beta, true, start, limit);
 
       board[m.y][m.x] = 0;
 
-      minEval = Math.min(minEval, eval);
-      beta = Math.min(beta, eval);
+      best = Math.min(best, val);
+      beta = Math.min(beta, val);
 
       if(beta <= alpha) break;
     }
 
-    return minEval;
+    return best;
   }
 }
 
 /* =========================
-   評価関数（強化版）
+   評価（核心）
 ========================= */
 function evaluateBoard(){
   let score = 0;
@@ -217,8 +191,7 @@ function evaluateBoard(){
       if(board[y][x] === 0) continue;
 
       const p = board[y][x];
-
-      score += evaluate(x,y,p) * (p === 2 ? 1 : -1);
+      score += evaluate(x,y,p) * (p===2 ? 1 : -1);
     }
   }
 
@@ -227,6 +200,7 @@ function evaluateBoard(){
 
 function evaluate(x,y,p){
   let score = 0;
+
   const dirs = [[1,0],[0,1],[1,1],[1,-1]];
 
   for(const [dx,dy] of dirs){
@@ -234,172 +208,150 @@ function evaluate(x,y,p){
     score += patternScore(count, openEnds);
   }
 
-  const center = SIZE / 2;
-  score -= (Math.abs(x-center) + Math.abs(y-center)) * 8;
+  const c = SIZE/2;
+  score -= (Math.abs(x-c)+Math.abs(y-c))*6;
 
   return score;
 }
 
 /* =========================
-   ライン解析
+   形評価（勝ち構造ベース）
 ========================= */
-function getLine(x,y,dx,dy,p){
-  let count = 1;
-  let openEnds = 0;
+function patternScore(count, open){
 
-  const check = (nx,ny)=> board[ny]?.[nx] === p;
+  if(count >= 5) return 1000000;
 
-  let nx = x + dx;
-  let ny = y + dy;
+  if(count === 4) return 200000;
 
-  while(check(nx,ny)){
-    count++;
-    nx += dx;
-    ny += dy;
-  }
-  if(board[ny]?.[nx] === 0) openEnds++;
+  if(count === 3 && open === 2) return 80000; // 活三（超重要）
 
-  nx = x - dx;
-  ny = y - dy;
+  if(count === 3 && open === 1) return 30000;
 
-  while(check(nx,ny)){
-    count++;
-    nx -= dx;
-    ny -= dy;
-  }
-  if(board[ny]?.[nx] === 0) openEnds++;
-
-  return {count, openEnds};
-}
-
-/* =========================
-   形評価（核心）
-========================= */
-function patternScore(count, openEnds){
-
-  if(count >= 4) return 100000;
-
-  if(count === 3 && openEnds === 2){
-    return 60000; // 活三（最重要）
-  }
-
-  if(count === 3 && openEnds === 1){
-    return 20000;
-  }
-
-  if(count === 2 && openEnds === 2){
-    return 500;
-  }
-
-  if(count === 2){
-    return 100;
-  }
+  if(count === 2 && open === 2) return 5000;
 
   return 0;
 }
 
 /* =========================
-   候補手（中央制御版）
+   ダブルスレット検出
 ========================= */
-function getMovesSafe(){
+function hasDoubleThreat(x,y,p){
+
+  let threats = 0;
+
+  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+
+  for(const [dx,dy] of dirs){
+    const {count, openEnds} = getLine(x,y,dx,dy,p);
+    if(count === 3 && openEnds === 2) threats++;
+  }
+
+  return threats >= 2;
+}
+
+/* =========================
+   候補手（脅威＋中央＋優先）
+========================= */
+function getMovesThreatOrdered(){
   const moves = [];
-  const center = SIZE / 2;
+  const center = SIZE/2;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x] !== 0) continue;
 
-      let near = false;
+      let score = 0;
 
       for(let dy=-2;dy<=2;dy++){
         for(let dx=-2;dx<=2;dx++){
-          if(board[y+dy]?.[x+dx] !== 0) near = true;
+          const v = board[y+dy]?.[x+dx];
+
+          if(v===2) score += 3;
+          if(v===1) score += 5;
         }
       }
 
-      if(!near) continue;
+      if(hasDoubleThreat(x,y,2)) score += 50000;
+      if(hasDoubleThreat(x,y,1)) score += 60000;
 
-      const dist = Math.abs(x-center) + Math.abs(y-center);
+      score -= (Math.abs(x-center)+Math.abs(y-center));
 
-      // ★端暴走防止
-      if(dist > 12 && moves.length < 25) continue;
-
-      moves.push({x,y});
+      moves.push({x,y,score});
     }
   }
 
-  if(moves.length === 0){
-    for(let y=0;y<SIZE;y++){
-      for(let x=0;x<SIZE;x++){
-        if(board[y][x] === 0){
-          moves.push({x,y});
-        }
-      }
-    }
-  }
+  moves.sort((a,b)=>b.score-a.score);
 
-  return moves;
+  return moves.slice(0, 12);
+}
+
+/* =========================
+   ライン判定
+========================= */
+function getLine(x,y,dx,dy,p){
+  let count=1, open=0;
+
+  const chk=(nx,ny)=>board[ny]?.[nx]===p;
+
+  let nx=x+dx, ny=y+dy;
+  while(chk(nx,ny)){count++; nx+=dx; ny+=dy;}
+  if(board[ny]?.[nx]===0) open++;
+
+  nx=x-dx; ny=y-dy;
+  while(chk(nx,ny)){count++; nx-=dx; ny-=dy;}
+  if(board[ny]?.[nx]===0) open++;
+
+  return {count,openEnds:open};
 }
 
 /* =========================
    勝利判定
 ========================= */
 function checkWin(x,y,p){
-  const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
 
   for(const [dx,dy] of dirs){
-    let count = 1;
+    let c=1;
 
     for(const d of [-1,1]){
-      let nx = x + dx*d;
-      let ny = y + dy*d;
-
-      while(board[ny]?.[nx] === p){
-        count++;
-        nx += dx*d;
-        ny += dy*d;
+      let nx=x+dx*d, ny=y+dy*d;
+      while(board[ny]?.[nx]===p){
+        c++; nx+=dx*d; ny+=dy*d;
       }
     }
 
-    if(count >= 5) return true;
+    if(c>=5) return true;
   }
 
   return false;
 }
 
 /* =========================
-   音
-========================= */
-function playSound(){
-  sound.currentTime = 0;
-  sound.play().catch(()=>{});
-}
-
-/* =========================
-   終了処理
+   終了
 ========================= */
 function finalizeCPU(m){
   playSound();
 
   if(checkWin(m.x,m.y,2)){
-    infoEl.textContent = "CPUの勝ち";
-    gameOver = true;
+    infoEl.textContent="CPUの勝ち";
+    gameOver=true;
   } else {
-    infoEl.textContent = "あなたの番";
+    infoEl.textContent="あなたの番";
   }
 
   draw();
 }
 
-/* =========================
-   リセット
-========================= */
-function resetGame(){
-  init();
-  infoEl.textContent = "あなたの番です";
+/* 音 */
+function playSound(){
+  sound.currentTime=0;
+  sound.play().catch(()=>{});
 }
 
-/* =========================
-   起動
-========================= */
+/* リセット */
+function resetGame(){
+  init();
+  infoEl.textContent="あなたの番です";
+}
+
 init();
