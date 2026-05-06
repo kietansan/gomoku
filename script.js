@@ -5,6 +5,8 @@ let gameOver = false;
 let lastMove = null;
 let gameId = 0;
 
+let cpuStartTime = 0;
+
 const boardEl = document.getElementById("board");
 const infoEl = document.getElementById("info");
 const sound = document.getElementById("sound");
@@ -18,7 +20,7 @@ function init(){
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
   lastMove = null;
-  infoEl.textContent = "";
+  infoEl.textContent = "あなたの番です";
   draw();
 }
 
@@ -49,11 +51,11 @@ function draw(){
         cell.appendChild(stone);
       }
 
-      if(lastMove?.x===x && lastMove?.y===y){
-        cell.style.outline="2px solid red";
+      if(lastMove?.x === x && lastMove?.y === y){
+        cell.style.outline = "2px solid red";
       }
 
-      cell.onclick=()=>playerMove(x,y);
+      cell.onclick = () => playerMove(x,y);
       row.appendChild(cell);
     }
 
@@ -71,27 +73,38 @@ function playerMove(x,y){
 
   if(gameOver) return;
 
+  setInfo("CPU思考中...");
+
   const id = gameId;
 
   setTimeout(()=>{
-    if(gameOver || id!==gameId) return;
+    if(gameOver || id !== gameId) return;
     cpuMove(id);
-  },0);
+  }, 50);
 }
 
 /* =========================
-   CPU（4手読み）
+   CPU
 ========================= */
 function cpuMove(id){
-  if(gameOver || id!==gameId) return;
+  if(gameOver || id !== gameId) return;
+
+  cpuStartTime = Date.now();
+  setInfo("CPU思考中...");
 
   let move = searchBestMove(2, 4);
 
-  return place(move.x, move.y, 2);
+  if(gameOver || id !== gameId) return;
+
+  place(move.x, move.y, 2);
+
+  if(!gameOver){
+    setInfo("あなたの番です");
+  }
 }
 
 /* =========================
-   4手読みエンジン（制限付き）
+   4手読み（タイム制御付き）
 ========================= */
 function searchBestMove(p, depth){
 
@@ -101,6 +114,8 @@ function searchBestMove(p, depth){
   let bestScore = -Infinity;
 
   for(const m of moves){
+
+    if(timeUp()) break;
 
     board[m.y][m.x] = p;
 
@@ -118,10 +133,11 @@ function searchBestMove(p, depth){
 }
 
 /* =========================
-   擬似ミニマックス（軽量）
+   ミニマックス（軽量）
 ========================= */
 function minimax(p, depth, isMax){
 
+  if(timeUp()) return evaluate(2) - evaluate(1);
   if(depth === 0) return evaluate(2) - evaluate(1);
 
   const moves = getMoves();
@@ -129,6 +145,8 @@ function minimax(p, depth, isMax){
   let best = isMax ? -Infinity : Infinity;
 
   for(const m of moves){
+
+    if(timeUp()) break;
 
     board[m.y][m.x] = p;
 
@@ -147,7 +165,14 @@ function minimax(p, depth, isMax){
 }
 
 /* =========================
-   候補手制限（安定の核）
+   時間制御（5秒）
+========================= */
+function timeUp(){
+  return (Date.now() - cpuStartTime) > 5000;
+}
+
+/* =========================
+   候補手（安定核）
 ========================= */
 function getMoves(){
 
@@ -174,7 +199,7 @@ function getMoves(){
 }
 
 /* =========================
-   評価関数（安定型）
+   評価
 ========================= */
 function evaluate(p){
 
@@ -219,29 +244,9 @@ function lineCount(x,y,dx,dy,p){
 }
 
 /* =========================
-   着手
-========================= */
-function place(x,y,p){
-
-  if(gameOver) return;
-
-  board[y][x]=p;
-  lastMove={x,y};
-
-  draw();
-
-  if(getWin(x,y,p)){
-    gameOver=true;
-    infoEl.textContent = (p===2?"CPUの勝ち":"あなたの勝ち");
-  }
-
-  playSound();
-}
-
-/* =========================
    勝利判定
 ========================= */
-function getWin(x,y,p){
+function checkWin(x,y,p){
 
   for(const [dx,dy] of DIRS){
 
@@ -264,6 +269,33 @@ function getWin(x,y,p){
 }
 
 /* =========================
+   着手
+========================= */
+function place(x,y,p){
+
+  if(gameOver) return;
+
+  board[y][x]=p;
+  lastMove={x,y};
+
+  draw();
+
+  if(checkWin(x,y,p)){
+    gameOver=true;
+    setInfo(p===2 ? "CPUの勝ち" : "あなたの勝ち");
+  }
+
+  playSound();
+}
+
+/* =========================
+   UI表示
+========================= */
+function setInfo(text){
+  infoEl.textContent = text;
+}
+
+/* =========================
    音
 ========================= */
 function playSound(){
@@ -271,4 +303,7 @@ function playSound(){
   sound.play().catch(()=>{});
 }
 
+/* =========================
+   起動
+========================= */
 init();
