@@ -110,10 +110,7 @@ function draw(){
   // 石
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]){
-        drawStone(x,y,board[y][x]);
-      }
+      if(board[y][x]) drawStone(x,y,board[y][x]);
     }
   }
 }
@@ -152,7 +149,7 @@ function drawStone(x,y,color){
 }
 
 /* =========================
-   クリック（人間）
+   人間入力
 ========================= */
 document.addEventListener("click",(e)=>{
 
@@ -183,7 +180,7 @@ document.addEventListener("click",(e)=>{
 });
 
 /* =========================
-   CPU
+   CPU（正規化AI）
 ========================= */
 function cpuMove(){
 
@@ -193,6 +190,15 @@ function cpuMove(){
   if(move) return place(move.x,move.y,2);
 
   move = findWinningMove(1);
+  if(move) return place(move.x,move.y,2);
+
+  move = findOpenThreeBlock();
+  if(move) return place(move.x,move.y,2);
+
+  move = findDoubleThreat(2);
+  if(move) return place(move.x,move.y,2);
+
+  move = findDoubleThreat(1);
   if(move) return place(move.x,move.y,2);
 
   const candidates = generateMoves();
