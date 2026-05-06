@@ -24,6 +24,11 @@ window.onload = () => {
   ctx = canvas.getContext("2d");
   audio = document.getElementById("putSound");
 
+  if(typeof cpuMove !== "function"){
+    showError("cpu.js が読み込まれていません");
+    return;
+  }
+
   canvas.width = GRID * CELL + MARGIN * 2;
   canvas.height = GRID * CELL + MARGIN * 2;
 
@@ -33,6 +38,24 @@ window.onload = () => {
 
   canvas.addEventListener("click", onClickBoard);
 };
+
+/* =========================
+   エラー表示（強制停止）
+========================= */
+function showError(msg){
+
+  document.getElementById("info").innerText = "エラー: " + msg;
+
+  canvas = document.getElementById("board");
+  ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#300";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.fillStyle = "#fff";
+  ctx.font = "20px sans-serif";
+  ctx.fillText(msg, 20, 50);
+}
 
 /* =========================
    クリック
@@ -63,7 +86,7 @@ function onClickBoard(e){
 }
 
 /* =========================
-   CPUターン
+   CPUターン（必須）
 ========================= */
 function cpuTurn(){
 
@@ -72,17 +95,7 @@ function cpuTurn(){
 
   setTimeout(() => {
 
-    let x,y;
-
-    do {
-      x = Math.floor(Math.random()*SIZE);
-      y = Math.floor(Math.random()*SIZE);
-    } while(board[y][x] !== 0);
-
-    board[y][x] = 2;
-
-    draw();
-    playSound();
+    cpuMove(); // ★必須（存在保証済み）
 
     if(checkWin(2)){
       endGame("CPUの勝ち！");
@@ -96,13 +109,11 @@ function cpuTurn(){
 }
 
 /* =========================
-   勝敗判定（5連）
+   勝利判定
 ========================= */
 function checkWin(player){
 
-  const DIR = [
-    [1,0],[0,1],[1,1],[1,-1]
-  ];
+  const DIR = [[1,0],[0,1],[1,1],[1,-1]];
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -231,6 +242,7 @@ function playSound(){
 window.resetGame = () => {
 
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+
   gameOver = false;
   isCpuThinking = false;
 
