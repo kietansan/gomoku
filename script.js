@@ -13,17 +13,19 @@ const sound = document.getElementById("sound");
 function init() {
   board = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
   gameOver = false;
+
+  console.log("init OK");
   draw();
 }
 
 /* ======================
-   描画（最重要・安定版）
+   描画（絶対に壊れない版）
 ====================== */
 function draw() {
   const el = document.getElementById("board");
 
   if (!el) {
-    console.error("❌ board要素が見つかりません");
+    console.error("❌ #board が見つかりません");
     return;
   }
 
@@ -40,11 +42,12 @@ function draw() {
       cell.style.height = "30px";
       cell.style.border = "1px solid #999";
       cell.style.boxSizing = "border-box";
-      cell.style.cursor = "pointer";
       cell.style.display = "flex";
       cell.style.alignItems = "center";
       cell.style.justifyContent = "center";
+      cell.style.cursor = "pointer";
 
+      // 石表示
       if (board[y][x] === 1) {
         cell.style.background = "black";
         cell.style.borderRadius = "50%";
@@ -69,7 +72,8 @@ function draw() {
    プレイヤー
 ====================== */
 function playerMove(x, y) {
-  if (gameOver || board[y][x] !== 0) return;
+  if (gameOver) return;
+  if (board[y][x] !== 0) return;
 
   board[y][x] = 1;
   playSound();
@@ -86,13 +90,12 @@ function playerMove(x, y) {
 }
 
 /* ======================
-   CPU（最低限安定AI）
+   CPU（超安定・軽量）
 ====================== */
 function cpuMove() {
   if (gameOver) return;
 
-  const moves = getMoves();
-  const move = moves[0];
+  const move = getMoves()[0];
 
   board[move.y][move.x] = 2;
   playSound();
@@ -113,7 +116,7 @@ function cpuMove() {
 function checkWin(x, y, p) {
   const dirs = [[1,0],[0,1],[1,1],[1,-1]];
 
-  for (let [dx, dy] of dirs) {
+  for (const [dx, dy] of dirs) {
     let count = 1;
 
     for (let d = -1; d <= 1; d += 2) {
@@ -134,7 +137,7 @@ function checkWin(x, y, p) {
 }
 
 /* ======================
-   候補手（超安定版）
+   候補手（安定・中央優先）
 ====================== */
 function getMoves() {
   const moves = [];
@@ -183,7 +186,7 @@ function playSound() {
 ====================== */
 function resetGame() {
   init();
-  if (infoEl) infoEl.textContent = "あなたの番";
+  if (infoEl) infoEl.textContent = "あなたの番です";
 }
 
 /* ======================
