@@ -17,13 +17,11 @@ function init(){
 }
 window.resetGame = init;
 
-/* 音 */
 function playSound(){
   sound.currentTime = 0;
   sound.play().catch(()=>{});
 }
 
-/* 星 */
 function isStar(x,y){
   return (
     (x===3&&y===3)||(x===3&&y===9)||
@@ -32,7 +30,6 @@ function isStar(x,y){
   );
 }
 
-/* 描画 */
 function draw(){
   boardEl.innerHTML = "";
 
@@ -42,17 +39,16 @@ function draw(){
   const lines = document.createElement("div");
   lines.className = "lines";
 
-  /* ★線＝交点中央 */
   for(let i=0;i<SIZE;i++){
 
     const h=document.createElement("div");
     h.className="h-line";
-    h.style.top = (i*CELL + CELL/2) + "px";
+    h.style.top = (i*CELL + CELL/2)+"px";
     lines.appendChild(h);
 
     const v=document.createElement("div");
     v.className="v-line";
-    v.style.left = (i*CELL + CELL/2) + "px";
+    v.style.left = (i*CELL + CELL/2)+"px";
     lines.appendChild(v);
   }
 
@@ -79,47 +75,47 @@ function draw(){
         node.appendChild(s);
       }
 
-      node.onclick=()=>{
-        if(gameOver || board[y][x]) return;
-
-        board[y][x]=1;
-        playSound();
-        draw();
-
-        if(checkWin(x,y,1)){
-          gameOver=true;
-          infoEl.textContent="あなたの勝ち";
-          return;
-        }
-
-        setTimeout(cpuMove,50);
-      };
-
       grid.appendChild(node);
     }
   }
 
   boardEl.appendChild(grid);
+
+  /* ★クリック完全修正（ここが核心） */
+  grid.onclick = (e)=>{
+    if(gameOver) return;
+
+    const rect = grid.getBoundingClientRect();
+
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const gx = Math.round(x / CELL - 0.5);
+    const gy = Math.round(y / CELL - 0.5);
+
+    if(gx<0||gy<0||gx>=SIZE||gy>=SIZE) return;
+    if(board[gy][gx]) return;
+
+    place(gx,gy,1);
+
+    if(!gameOver){
+      infoEl.textContent="CPU思考中...";
+      setTimeout(cpuMove,50);
+    }
+  };
 }
 
-/* CPU */
-function cpuMove(){
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(!board[y][x]){
-        board[y][x]=2;
-        draw();
-        if(checkWin(x,y,2)){
-          gameOver=true;
-          infoEl.textContent="CPUの勝ち";
-        }
-        return;
-      }
-    }
+function place(x,y,p){
+  board[y][x]=p;
+  playSound();
+  draw();
+
+  if(checkWin(x,y,p)){
+    gameOver=true;
+    infoEl.textContent = p===1?"あなたの勝ち":"CPUの勝ち";
   }
 }
 
-/* 勝利 */
 function checkWin(x,y,p){
   for(const [dx,dy] of DIRS){
     let c=1;
@@ -132,6 +128,59 @@ function checkWin(x,y,p){
     if(c>=5) return true;
   }
   return false;
+}
+
+/* ★強化CPU */
+function cpuMove(){
+
+  // 勝ち
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]) continue;
+      board[y][x]=2;
+      if(checkWin(x,y,2)){
+        place(x,y,2);
+        return;
+      }
+      board[y][x]=0;
+    }
+  }
+
+  // 防御
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]) continue;
+      board[y][x]=1;
+      if(checkWin(x,y,1)){
+        board[y][x]=0;
+        place(x,y,2);
+        return;
+      }
+      board[y][x]=0;
+    }
+  }
+
+  // 中央寄り
+  let best=null;
+  let bestScore=999;
+
+  const cx=SIZE/2;
+  const cy=SIZE/2;
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]) continue;
+
+      const dist=Math.abs(x-cx)+Math.abs(y-cy);
+
+      if(dist<bestScore){
+        bestScore=dist;
+        best={x,y};
+      }
+    }
+  }
+
+  if(best) place(best.x,best.y,2);
 }
 
 init();
