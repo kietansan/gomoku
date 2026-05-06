@@ -14,7 +14,9 @@ function init(){
   draw();
 }
 
-/* 描画 */
+/* =========================
+   描画（安定版：DOM石方式）
+========================= */
 function draw(){
   boardEl.innerHTML = "";
 
@@ -26,8 +28,17 @@ function draw(){
       const cell = document.createElement("div");
       cell.className = "cell";
 
-      if(board[y][x] === 1) cell.classList.add("black");
-      if(board[y][x] === 2) cell.classList.add("white");
+      if(board[y][x] !== 0){
+        const stone = document.createElement("div");
+
+        if(board[y][x] === 1){
+          stone.className = "black";
+        } else {
+          stone.className = "white";
+        }
+
+        cell.appendChild(stone);
+      }
 
       cell.onclick = () => playerMove(x,y);
       row.appendChild(cell);
@@ -37,7 +48,9 @@ function draw(){
   }
 }
 
-/* プレイヤー */
+/* =========================
+   プレイヤー
+========================= */
 function playerMove(x,y){
   if(gameOver || board[y][x] !== 0) return;
 
@@ -56,9 +69,8 @@ function playerMove(x,y){
 }
 
 /* =========================
-   CPU（10秒αβ・安定版）
+   CPU（10秒αβ・反復深化）
 ========================= */
-
 function cpuMove(){
   if(gameOver) return;
 
@@ -71,7 +83,6 @@ function cpuMove(){
   let bestMove = moves[0];
   let bestScore = -Infinity;
 
-  // 反復深化
   for(let depth = 1; depth <= 4; depth++){
 
     let localBestMove = null;
@@ -109,7 +120,6 @@ function cpuMove(){
     if(performance.now() - startTime > TIME_LIMIT) break;
   }
 
-  // ★最終保険
   if(!bestMove) bestMove = {x:7,y:7};
 
   board[bestMove.y][bestMove.x] = 2;
@@ -117,9 +127,8 @@ function cpuMove(){
 }
 
 /* =========================
-   αβミニマックス（時間制限付き）
+   αβミニマックス
 ========================= */
-
 function minimax(player, depth, alpha, beta, isMax, startTime, limit){
 
   if(depth === 0) return evaluateBoard();
@@ -196,9 +205,8 @@ function minimax(player, depth, alpha, beta, isMax, startTime, limit){
 }
 
 /* =========================
-   評価関数
+   評価
 ========================= */
-
 function evaluateBoard(){
   let score = 0;
 
@@ -269,9 +277,8 @@ function patternScore(count, openEnds){
 }
 
 /* =========================
-   候補手（完全安全版）
+   候補手（完全安定）
 ========================= */
-
 function getMovesSafe(){
   const moves = [];
 
@@ -291,7 +298,6 @@ function getMovesSafe(){
     }
   }
 
-  // 完全空防止
   if(moves.length === 0){
     for(let y=0;y<SIZE;y++){
       for(let x=0;x<SIZE;x++){
