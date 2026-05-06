@@ -13,26 +13,12 @@ const sound = document.getElementById("sound");
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
 /* =========================
-   星判定（囲碁風）
-========================= */
-function isStar(x,y){
-  return (
-    (x===3 && y===3) ||
-    (x===3 && y===11) ||
-    (x===11 && y===3) ||
-    (x===11 && y===11) ||
-    (x===7 && y===7)
-  );
-}
-
-/* =========================
    初期化
 ========================= */
 function init(){
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
   lastMove = null;
-
   setInfo("あなたの番です");
   draw();
 }
@@ -52,36 +38,58 @@ function setInfo(text){
 }
 
 /* =========================
-   描画（星ここで完全統合）
+   星（交点ベース）
+========================= */
+function isStar(x,y){
+  return (
+    (x===3 && y===3) ||
+    (x===3 && y===11) ||
+    (x===11 && y===3) ||
+    (x===11 && y===11) ||
+    (x===7 && y===7)
+  );
+}
+
+/* =========================
+   描画（交点）
 ========================= */
 function draw(){
   boardEl.innerHTML = "";
 
   for(let y=0;y<SIZE;y++){
     const row = document.createElement("div");
-    row.className = "row";
+    row.className = "row-intersection";
 
     for(let x=0;x<SIZE;x++){
-      const cell = document.createElement("div");
-      cell.className = "cell";
 
-      // ★星はここで毎回描画（重要）
+      const node = document.createElement("div");
+      node.className = "node";
+
+      // 星
       if(isStar(x,y)){
-        cell.classList.add("star");
+        node.classList.add("star");
       }
 
-      if(board[y][x]){
-        const stone = document.createElement("div");
-        stone.className = board[y][x] === 1 ? "black" : "white";
-        cell.appendChild(stone);
+      // 石
+      if(board[y][x] === 1){
+        const s = document.createElement("div");
+        s.className = "stone black";
+        node.appendChild(s);
+      }
+
+      if(board[y][x] === 2){
+        const s = document.createElement("div");
+        s.className = "stone white";
+        node.appendChild(s);
       }
 
       if(lastMove?.x === x && lastMove?.y === y){
-        cell.style.outline = "2px solid red";
+        node.classList.add("last");
       }
 
-      cell.onclick = () => playerMove(x,y);
-      row.appendChild(cell);
+      node.onclick = () => playerMove(x,y);
+
+      row.appendChild(node);
     }
 
     boardEl.appendChild(row);
@@ -109,14 +117,13 @@ function playerMove(x,y){
 }
 
 /* =========================
-   CPU（4手読み）
+   CPU（簡易）
 ========================= */
 function cpuMove(id){
-  if(gameOver || id !== gameId) return;
 
   cpuStartTime = Date.now();
 
-  const move = searchBestMove(2, 4);
+  const move = bestMove(2);
 
   if(gameOver || id !== gameId) return;
 
@@ -124,9 +131,9 @@ function cpuMove(id){
 }
 
 /* =========================
-   4手読み
+   手選び
 ========================= */
-function searchBestMove(p, depth){
+function bestMove(p){
 
   const moves = getMoves();
 
@@ -135,11 +142,9 @@ function searchBestMove(p, depth){
 
   for(const m of moves){
 
-    if(timeUp()) break;
-
     board[m.y][m.x] = p;
 
-    const score = minimax(3 - p, depth - 1, false);
+    const score = evaluate(2) - evaluate(1)*1.1;
 
     board[m.y][m.x] = 0;
 
@@ -153,46 +158,7 @@ function searchBestMove(p, depth){
 }
 
 /* =========================
-   ミニマックス
-========================= */
-function minimax(p, depth, isMax){
-
-  if(timeUp()) return evaluate(2) - evaluate(1);
-  if(depth === 0) return evaluate(2) - evaluate(1);
-
-  const moves = getMoves();
-
-  let best = isMax ? -Infinity : Infinity;
-
-  for(const m of moves){
-
-    if(timeUp()) break;
-
-    board[m.y][m.x] = p;
-
-    const score = minimax(3 - p, depth - 1, !isMax);
-
-    board[m.y][m.x] = 0;
-
-    if(isMax){
-      if(score > best) best = score;
-    }else{
-      if(score < best) best = score;
-    }
-  }
-
-  return best;
-}
-
-/* =========================
-   5秒制限
-========================= */
-function timeUp(){
-  return (Date.now() - cpuStartTime) > 5000;
-}
-
-/* =========================
-   候補手
+   候補手（交点）
 ========================= */
 function getMoves(){
 
@@ -203,11 +169,11 @@ function getMoves(){
 
       if(board[y][x]) continue;
 
-      let near=false;
+      let near = false;
 
       for(let dy=-1;dy<=1;dy++){
         for(let dx=-1;dx<=1;dx++){
-          if(board[y+dy]?.[x+dx]) near=true;
+          if(board[y+dy]?.[x+dx]) near = true;
         }
       }
 
@@ -223,20 +189,21 @@ function getMoves(){
 ========================= */
 function evaluate(p){
 
-  let score=0;
+  let score = 0;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
-      if(board[y][x]!==p) continue;
+      if(board[y][x] !== p) continue;
 
       for(const [dx,dy] of DIRS){
+
         const len = lineCount(x,y,dx,dy,p);
 
-        if(len>=5) score+=1000000;
-        else if(len===4) score+=50000;
-        else if(len===3) score+=12000;
-        else if(len===2) score+=800;
+        if(len >= 5) score += 1000000;
+        else if(len === 4) score += 50000;
+        else if(len === 3) score += 8000;
+        else if(len === 2) score += 500;
       }
     }
   }
@@ -245,18 +212,19 @@ function evaluate(p){
 }
 
 /* =========================
-   ライン
+   連結数
 ========================= */
 function lineCount(x,y,dx,dy,p){
-  let c=1;
 
-  let nx=x+dx, ny=y+dy;
-  while(board[ny]?.[nx]===p){
+  let c = 1;
+
+  let nx = x+dx, ny = y+dy;
+  while(board[ny]?.[nx] === p){
     c++; nx+=dx; ny+=dy;
   }
 
-  nx=x-dx; ny=y-dy;
-  while(board[ny]?.[nx]===p){
+  nx = x-dx; ny = y-dy;
+  while(board[ny]?.[nx] === p){
     c++; nx-=dx; ny-=dy;
   }
 
@@ -264,25 +232,26 @@ function lineCount(x,y,dx,dy,p){
 }
 
 /* =========================
-   勝利判定
+   勝利
 ========================= */
 function checkWin(x,y,p){
 
   for(const [dx,dy] of DIRS){
 
-    let c=1;
+    let c = 1;
 
     for(const d of [-1,1]){
-      let nx=x+dx*d, ny=y+dy*d;
+      let nx = x + dx*d;
+      let ny = y + dy*d;
 
-      while(board[ny]?.[nx]===p){
+      while(board[ny]?.[nx] === p){
         c++;
-        nx+=dx*d;
-        ny+=dy*d;
+        nx += dx*d;
+        ny += dy*d;
       }
     }
 
-    if(c>=5) return true;
+    if(c >= 5) return true;
   }
 
   return false;
@@ -295,21 +264,18 @@ function place(x,y,p){
 
   if(gameOver) return;
 
-  board[y][x]=p;
-  lastMove={x,y};
+  board[y][x] = p;
+  lastMove = {x,y};
 
   draw();
 
   if(checkWin(x,y,p)){
-    gameOver=true;
+    gameOver = true;
     setInfo(p===2 ? "CPUの勝ち" : "あなたの勝ち");
-    playSound();
     return;
   }
 
-  playSound();
-
-  if(p===2){
+  if(p === 2){
     setInfo("あなたの番です");
   }
 }
@@ -318,7 +284,7 @@ function place(x,y,p){
    音
 ========================= */
 function playSound(){
-  sound.currentTime=0;
+  sound.currentTime = 0;
   sound.play().catch(()=>{});
 }
 
