@@ -1,105 +1,74 @@
 const SIZE = 13;
-const CELL = 40;
 
 let board = [];
 let gameOver = false;
 
-const canvas = document.getElementById("board");
-const ctx = canvas.getContext("2d");
+const boardEl = document.getElementById("board");
 const infoEl = document.getElementById("info");
 
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
 /* ===== 初期化 ===== */
 function init(){
-  canvas.width = CELL*(SIZE-1);
-  canvas.height = CELL*(SIZE-1);
 
+  boardEl.innerHTML = "";
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
 
   infoEl.textContent = "あなたの番です";
 
+  drawGrid();
   draw();
 }
 window.resetGame = init;
 
-/* ===== 星 ===== */
-function isStar(x,y){
-  return (
-    (x===3&&y===3)||(x===3&&y===9)||
-    (x===9&&y===3)||(x===9&&y===9)||
-    (x===6&&y===6)
-  );
+/* ===== グリッド生成 ===== */
+function drawGrid(){
+
+  const cellSize = 34;
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.style.left = x*cellSize + "px";
+      cell.style.top = y*cellSize + "px";
+
+      cell.onclick = () => clickCell(x,y);
+
+      boardEl.appendChild(cell);
+    }
+  }
 }
 
 /* ===== 描画 ===== */
 function draw(){
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  document.querySelectorAll(".stone").forEach(e=>e.remove());
 
-  ctx.fillStyle="#d8b56a";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  ctx.strokeStyle="#333";
-  ctx.lineWidth=1;
-
-  for(let i=0;i<SIZE;i++){
-    ctx.beginPath();
-    ctx.moveTo(i*CELL,0);
-    ctx.lineTo(i*CELL,CELL*(SIZE-1));
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(0,i*CELL);
-    ctx.lineTo(CELL*(SIZE-1),i*CELL);
-    ctx.stroke();
-  }
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(isStar(x,y)){
-        ctx.fillStyle="#111";
-        ctx.beginPath();
-        ctx.arc(x*CELL,y*CELL,4,0,Math.PI*2);
-        ctx.fill();
-      }
-    }
-  }
+  const cellSize = 34;
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
       if(board[y][x]===0) continue;
 
-      ctx.beginPath();
-      ctx.arc(x*CELL,y*CELL,14,0,Math.PI*2);
+      const stone = document.createElement("div");
+      stone.className = "stone " + (board[y][x]===1 ? "black":"white");
 
-      if(board[y][x]===1){
-        ctx.fillStyle="#000";
-      }else{
-        ctx.fillStyle="#fff";
-        ctx.strokeStyle="#000";
-        ctx.lineWidth=2;
-        ctx.stroke();
-      }
+      stone.style.left = x*cellSize + "px";
+      stone.style.top = y*cellSize + "px";
 
-      ctx.fill();
+      boardEl.appendChild(stone);
     }
   }
 }
 
 /* ===== クリック ===== */
-canvas.onclick = (e)=>{
+function clickCell(x,y){
 
   if(gameOver) return;
-
-  const rect = canvas.getBoundingClientRect();
-
-  const x = Math.round((e.clientX-rect.left)/CELL);
-  const y = Math.round((e.clientY-rect.top)/CELL);
-
-  if(x<0||y<0||x>=SIZE||y>=SIZE) return;
   if(board[y][x]) return;
 
   place(x,y,1);
@@ -108,10 +77,11 @@ canvas.onclick = (e)=>{
     infoEl.textContent="CPU思考中...";
     setTimeout(cpuMove,10);
   }
-};
+}
 
 /* ===== 着手 ===== */
 function place(x,y,p){
+
   board[y][x]=p;
 
   draw();
@@ -124,11 +94,15 @@ function place(x,y,p){
 
 /* ===== 勝利判定 ===== */
 function checkWin(x,y,p){
+
   for(const [dx,dy] of DIRS){
+
     let c=1;
 
     for(const d of [-1,1]){
-      let nx=x+dx*d, ny=y+dy*d;
+
+      let nx=x+dx*d;
+      let ny=y+dy*d;
 
       while(board[ny]?.[nx]===p){
         c++;
@@ -139,95 +113,14 @@ function checkWin(x,y,p){
 
     if(c>=5) return true;
   }
+
   return false;
 }
 
-/* ===== 脅威判定（副作用なし） ===== */
-function threatCount(x,y,p){
-
-  let t=0;
-
-  for(const [dx,dy] of DIRS){
-
-    let c=1,o=0;
-
-    let nx=x+dx, ny=y+dy;
-    while(board[ny]?.[nx]===p){c++;nx+=dx;ny+=dy;}
-    if(board[ny]?.[nx]===0) o++;
-
-    nx=x-dx; ny=y-dy;
-    while(board[ny]?.[nx]===p){c++;nx-=dx;ny-=dy;}
-    if(board[ny]?.[nx]===0) o++;
-
-    if(c>=4 || (c===3 && o>=2)) t++;
-  }
-
-  return t;
-}
-
-/* ===== 評価 ===== */
-function evalPos(x,y,p){
-
-  let s=0;
-
-  for(const [dx,dy] of DIRS){
-
-    let c=1,o=0;
-
-    let nx=x+dx, ny=y+dy;
-    while(board[ny]?.[nx]===p){c++;nx+=dx;ny+=dy;}
-    if(board[ny]?.[nx]===0) o++;
-
-    nx=x-dx; ny=y-dy;
-    while(board[ny]?.[nx]===p){c++;nx-=dx;ny-=dy;}
-    if(board[ny]?.[nx]===0) o++;
-
-    if(c>=5) s+=100000;
-    else if(c===4&&o===2) s+=20000;
-    else if(c===4&&o===1) s+=5000;
-    else if(c===3&&o===2) s+=2000;
-    else if(c===2&&o===2) s+=500;
-  }
-
-  return s;
-}
-
-/* ===== 候補手 ===== */
-function getMoves(){
-
-  const list=[];
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]) continue;
-
-      let near=false;
-
-      for(let dy=-2;dy<=2;dy++){
-        for(let dx=-2;dx<=2;dx++){
-          if(board[y+dy]?.[x+dx]) near=true;
-        }
-      }
-
-      if(!near) continue;
-
-      const score =
-        evalPos(x,y,2)*1.2 +
-        evalPos(x,y,1);
-
-      list.push({x,y,score});
-    }
-  }
-
-  list.sort((a,b)=>b.score-a.score);
-  return list.slice(0,10);
-}
-
-/* ===== CPU ===== */
+/* ===== CPU（簡易安定版） ===== */
 function cpuMove(){
 
-  // ① 即勝ち
+  // 即勝ち
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
@@ -242,7 +135,7 @@ function cpuMove(){
     }
   }
 
-  // ② 即防御（修正済み）
+  // 防御
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
@@ -258,53 +151,15 @@ function cpuMove(){
     }
   }
 
-  // ③ ダブル脅威
+  // 適当評価
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-      if(board[y][x]) continue;
-
-      if(threatCount(x,y,2)>=2){
+      if(!board[y][x]){
         place(x,y,2);
         return;
       }
     }
   }
-
-  // ④ 相手脅威回避
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(board[y][x]) continue;
-
-      if(threatCount(x,y,1)>=2){
-        place(x,y,2);
-        return;
-      }
-    }
-  }
-
-  // ⑤ 評価選択
-  const moves=getMoves();
-
-  let best=moves[0];
-  let bestScore=-Infinity;
-
-  for(const m of moves){
-
-    board[m.y][m.x]=2;
-
-    let score =
-      evalPos(m.x,m.y,2)*1.3 -
-      evalPos(m.x,m.y,1)*1.0;
-
-    board[m.y][m.x]=0;
-
-    if(score>bestScore){
-      bestScore=score;
-      best=m;
-    }
-  }
-
-  place(best.x,best.y,2);
 }
 
 init();
