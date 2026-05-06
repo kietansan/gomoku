@@ -11,9 +11,15 @@ body{
   margin-top:20px;
   padding:18px;
 
-  /* ★木目（画像推奨） */
-  background-image:url("wood.jpg");
-  background-size:cover;
+  /* ★木目（弱めにして線を優先） */
+  background:
+    repeating-linear-gradient(
+      90deg,
+      #d8b56a 0px,
+      #d8b56a 12px,
+      #d1aa5d 12px,
+      #d1aa5d 24px
+    );
 
   box-shadow:0 10px 25px rgba(0,0,0,0.4);
 }
@@ -83,16 +89,9 @@ body{
 
 .black{
   background:radial-gradient(circle at 30% 30%,#555,#000);
-  box-shadow:2px 2px 5px rgba(0,0,0,0.6);
 }
 
 .white{
   background:radial-gradient(circle at 30% 30%,#fff,#ddd);
   border:1px solid #999;
-  box-shadow:2px 2px 5px rgba(0,0,0,0.4);
-}
-
-.last{
-  outline:2px solid red;
-  outline-offset:-2px;
 }
