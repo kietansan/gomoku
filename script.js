@@ -1,5 +1,4 @@
 const SIZE = 13;
-const CELL = 34;
 
 let board = [];
 let gameOver = false;
@@ -20,12 +19,10 @@ function init(){
   infoEl.textContent = "あなたの番です";
 
   drawGrid();
-  drawStars();
-  draw();
 }
 window.resetGame = init;
 
-/* ===== 13×13交点生成 ===== */
+/* ===== グリッド生成（完全一致） ===== */
 function drawGrid(){
 
   for(let y=0;y<SIZE;y++){
@@ -33,57 +30,16 @@ function drawGrid(){
 
       const cell = document.createElement("div");
       cell.className = "cell";
-      cell.style.left = x*CELL + "px";
-      cell.style.top = y*CELL + "px";
 
-      cell.onclick = () => clickCell(x,y);
+      cell.onclick = () => click(x,y);
 
       boardEl.appendChild(cell);
     }
   }
 }
 
-/* ===== 星（天元など） ===== */
-function drawStars(){
-
-  const stars = [
-    [3,3],[3,9],[9,3],[9,9],[6,6]
-  ];
-
-  for(const [x,y] of stars){
-
-    const s = document.createElement("div");
-    s.className = "star";
-    s.style.left = x*CELL + "px";
-    s.style.top = y*CELL + "px";
-
-    boardEl.appendChild(s);
-  }
-}
-
-/* ===== 描画 ===== */
-function draw(){
-
-  document.querySelectorAll(".stone").forEach(e=>e.remove());
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]===0) continue;
-
-      const stone = document.createElement("div");
-      stone.className = "stone " + (board[y][x]===1 ? "black":"white");
-
-      stone.style.left = x*CELL + "px";
-      stone.style.top = y*CELL + "px";
-
-      boardEl.appendChild(stone);
-    }
-  }
-}
-
 /* ===== クリック ===== */
-function clickCell(x,y){
+function click(x,y){
 
   if(gameOver) return;
   if(board[y][x]) return;
@@ -91,8 +47,7 @@ function clickCell(x,y){
   place(x,y,1);
 
   if(!gameOver){
-    infoEl.textContent="CPU思考中...";
-    setTimeout(cpuMove,10);
+    setTimeout(cpuMove,50);
   }
 }
 
@@ -101,11 +56,38 @@ function place(x,y,p){
 
   board[y][x]=p;
 
-  draw();
+  render();
 
   if(checkWin(x,y,p)){
     gameOver=true;
-    infoEl.textContent = p===1 ? "あなたの勝ち" : "CPUの勝ち";
+    infoEl.textContent = p===1?"あなたの勝ち":"CPUの勝ち";
+  }
+}
+
+/* ===== 描画（完全同期） ===== */
+function render(){
+
+  document.querySelectorAll(".stone").forEach(e=>e.remove());
+
+  const cells = document.querySelectorAll(".cell");
+
+  let i=0;
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]===0){
+        i++;
+        continue;
+      }
+
+      const stone = document.createElement("div");
+      stone.className = "stone " + (board[y][x]===1?"black":"white");
+
+      cells[i].appendChild(stone);
+
+      i++;
+    }
   }
 }
 
@@ -134,49 +116,16 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* ===== CPU（安定版） ===== */
+/* ===== CPU（簡易安定） ===== */
 function cpuMove(){
 
-  // 即勝ち
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
       if(board[y][x]) continue;
 
-      board[y][x]=2;
-      if(checkWin(x,y,2)){
-        board[y][x]=0;
-        place(x,y,2);
-        return;
-      }
-      board[y][x]=0;
-    }
-  }
-
-  // 防御
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]) continue;
-
-      board[y][x]=1;
-      const danger = checkWin(x,y,1);
-      board[y][x]=0;
-
-      if(danger){
-        place(x,y,2);
-        return;
-      }
-    }
-  }
-
-  // 適当着手（安定用）
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(!board[y][x]){
-        place(x,y,2);
-        return;
-      }
+      place(x,y,2);
+      return;
     }
   }
 }
