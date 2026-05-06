@@ -1,6 +1,5 @@
 const SIZE = 13;
 const CELL = 34;
-const TIME_LIMIT = 2800; // ms
 
 let board = [];
 let gameOver = false;
@@ -10,70 +9,88 @@ const infoEl = document.getElementById("info");
 
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
-/* ===== Zobrist Hash ===== */
-const zobrist = [];
-for(let y=0;y<SIZE;y++){
-  zobrist[y]=[];
-  for(let x=0;x<SIZE;x++){
-    zobrist[y][x]=[
-      Math.random()*1e9|0,
-      Math.random()*1e9|0
-    ];
-  }
-}
-let hash = 0;
-const TT = new Map();
-
 /* ===== 初期化 ===== */
 function init(){
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
   gameOver = false;
-  hash = 0;
-  TT.clear();
   infoEl.textContent = "あなたの番です";
   draw();
 }
 window.resetGame = init;
 
-/* ===== hash更新 ===== */
-function applyHash(x,y,p){
-  if(p===1) hash ^= zobrist[y][x][0];
-  if(p===2) hash ^= zobrist[y][x][1];
-}
-
 /* ===== 描画 ===== */
 function draw(){
-  boardEl.innerHTML="";
+  boardEl.innerHTML = "";
+
+  /* 線 */
+  for(let i=0;i<SIZE;i++){
+    const h=document.createElement("div");
+    h.className="line h-line";
+    h.style.top=(i*CELL+CELL/2)+"px";
+    boardEl.appendChild(h);
+
+    const v=document.createElement("div");
+    v.className="line v-line";
+    v.style.left=(i*CELL+CELL/2)+"px";
+    boardEl.appendChild(v);
+  }
+
+  /* 交点 */
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-      const d=document.createElement("div");
-      d.className="cell";
-      d.style.left=x*CELL+"px";
-      d.style.top=y*CELL+"px";
-      if(board[y][x]) d.textContent=board[y][x]===1?"●":"○";
 
-      d.onclick=()=>{
-        if(gameOver||board[y][x]) return;
+      const cell=document.createElement("div");
+      cell.className="cell";
+      cell.style.left=(x*CELL)+"px";
+      cell.style.top=(y*CELL)+"px";
+
+      /* 星 */
+      if(isStar(x,y)){
+        const s=document.createElement("div");
+        s.className="star";
+        cell.appendChild(s);
+      }
+
+      /* 石 */
+      if(board[y][x]){
+        const stone=document.createElement("div");
+        stone.className="stone "+(board[y][x]===1?"black":"white");
+        cell.appendChild(stone);
+      }
+
+      cell.onclick=()=>{
+        if(gameOver || board[y][x]) return;
+
         place(x,y,1);
+
         if(!gameOver){
           infoEl.textContent="CPU思考中...";
           setTimeout(cpuMove,10);
         }
       };
-      boardEl.appendChild(d);
+
+      boardEl.appendChild(cell);
     }
   }
+}
+
+/* ===== 星位置 ===== */
+function isStar(x,y){
+  return (
+    (x===3&&y===3)||(x===3&&y===9)||
+    (x===9&&y===3)||(x===9&&y===9)||
+    (x===6&&y===6)
+  );
 }
 
 /* ===== 着手 ===== */
 function place(x,y,p){
   board[y][x]=p;
-  applyHash(x,y,p);
   draw();
 
   if(checkWin(x,y,p)){
     gameOver=true;
-    infoEl.textContent=p===1?"あなたの勝ち":"CPUの勝ち";
+    infoEl.textContent = p===1?"あなたの勝ち":"CPUの勝ち";
   }else if(p===2){
     infoEl.textContent="あなたの番です";
   }
@@ -96,8 +113,11 @@ function checkWin(x,y,p){
 
 /* ===== 危険検出 ===== */
 function isDanger(x,y,p){
+
   board[y][x]=p;
+
   for(const [dx,dy] of DIRS){
+
     let count=1,open=0;
 
     let nx=x+dx,ny=y+dy;
@@ -113,6 +133,7 @@ function isDanger(x,y,p){
       return true;
     }
   }
+
   board[y][x]=0;
   return false;
 }
@@ -120,9 +141,11 @@ function isDanger(x,y,p){
 /* ===== ダブル脅威 ===== */
 function countThreats(x,y,p){
   let t=0;
+
   board[y][x]=p;
 
   for(const [dx,dy] of DIRS){
+
     let count=1,open=0;
 
     let nx=x+dx,ny=y+dy;
@@ -141,102 +164,34 @@ function countThreats(x,y,p){
 }
 
 /* ===== 評価 ===== */
-function evaluate(){
+function evalPos(x,y,p){
   let score=0;
 
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      const p=board[y][x];
-      if(!p) continue;
+  for(const [dx,dy] of DIRS){
 
-      for(const [dx,dy] of DIRS){
-        let count=1,open=0;
+    let count=1,open=0;
 
-        let nx=x+dx,ny=y+dy;
-        while(board[ny]?.[nx]===p){count++;nx+=dx;ny+=dy;}
-        if(board[ny]?.[nx]===0) open++;
+    let nx=x+dx,ny=y+dy;
+    while(board[ny]?.[nx]===p){count++;nx+=dx;ny+=dy;}
+    if(board[ny]?.[nx]===0) open++;
 
-        nx=x-dx;ny=y-dy;
-        while(board[ny]?.[nx]===p){count++;nx-=dx;ny-=dy;}
-        if(board[ny]?.[nx]===0) open++;
+    nx=x-dx;ny=y-dy;
+    while(board[ny]?.[nx]===p){count++;nx-=dx;ny-=dy;}
+    if(board[ny]?.[nx]===0) open++;
 
-        let val=0;
-        if(count>=5) val=100000;
-        else if(count===4&&open===2) val=20000;
-        else if(count===4&&open===1) val=5000;
-        else if(count===3&&open===2) val=2000;
-
-        score += (p===2?val:-val);
-      }
-    }
+    if(count>=5) score+=100000;
+    else if(count===4&&open===2) score+=20000;
+    else if(count===4&&open===1) score+=5000;
+    else if(count===3&&open===2) score+=2000;
   }
+
   return score;
-}
-
-/* ===== 候補 ===== */
-function getMoves(){
-  const list=[];
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(board[y][x]) continue;
-
-      let near=false;
-      for(let dy=-2;dy<=2;dy++){
-        for(let dx=-2;dx<=2;dx++){
-          if(board[y+dy]?.[x+dx]) near=true;
-        }
-      }
-      if(!near) continue;
-
-      list.push({x,y});
-    }
-  }
-  return list;
-}
-
-/* ===== ミニマックス＋TT ===== */
-function search(depth,alpha,beta,start){
-
-  if(Date.now()-start > TIME_LIMIT) return evaluate();
-
-  const key = hash+"_"+depth;
-  if(TT.has(key)) return TT.get(key);
-
-  if(depth===0){
-    const v = evaluate();
-    TT.set(key,v);
-    return v;
-  }
-
-  const moves = getMoves();
-
-  let best = -Infinity;
-
-  for(let m of moves){
-
-    board[m.y][m.x]=2;
-    applyHash(m.x,m.y,2);
-
-    const val = -search(depth-1,-beta,-alpha,start);
-
-    board[m.y][m.x]=0;
-    applyHash(m.x,m.y,2);
-
-    if(val>best) best=val;
-    if(best>alpha) alpha=best;
-    if(alpha>=beta) break;
-  }
-
-  TT.set(key,best);
-  return best;
 }
 
 /* ===== CPU ===== */
 function cpuMove(){
 
-  const start = Date.now();
-
-  // 即勝ち
+  // 勝ち
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
@@ -250,7 +205,7 @@ function cpuMove(){
     }
   }
 
-  // 即防御
+  // 防御
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
@@ -275,7 +230,7 @@ function cpuMove(){
     }
   }
 
-  // 防御
+  // 危険防御
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
@@ -286,39 +241,23 @@ function cpuMove(){
     }
   }
 
-  // ★反復深化
-  let best=null;
-  let depth=1;
+  // 評価
+  let best=null, bestScore=-Infinity;
 
-  while(Date.now()-start < TIME_LIMIT){
-    let bestLocal=null;
-    let bestScore=-Infinity;
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]) continue;
 
-    const moves = getMoves();
+      const s = evalPos(x,y,2) + evalPos(x,y,1);
 
-    for(let m of moves){
-
-      board[m.y][m.x]=2;
-      applyHash(m.x,m.y,2);
-
-      const score = -search(depth,-Infinity,Infinity,start);
-
-      board[m.y][m.x]=0;
-      applyHash(m.x,m.y,2);
-
-      if(score>bestScore){
-        bestScore=score;
-        bestLocal=m;
+      if(s>bestScore){
+        bestScore=s;
+        best={x,y};
       }
     }
-
-    if(bestLocal) best=bestLocal;
-    depth++;
   }
 
-  if(best){
-    place(best.x,best.y,2);
-  }
+  if(best) place(best.x,best.y,2);
 }
 
 init();
