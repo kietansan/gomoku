@@ -130,7 +130,7 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* ===== 危険検出（核心） ===== */
+/* ===== 危険検出 ===== */
 function isDanger(x,y,p){
 
   board[y][x]=p;
@@ -155,6 +155,34 @@ function isDanger(x,y,p){
 
   board[y][x]=0;
   return false;
+}
+
+/* ===== ダブル脅威 ===== */
+function countThreats(x,y,p){
+
+  let threats = 0;
+
+  board[y][x] = p;
+
+  for(const [dx,dy] of DIRS){
+
+    let count=1, open=0;
+
+    let nx=x+dx,ny=y+dy;
+    while(board[ny]?.[nx]===p){count++;nx+=dx;ny+=dy;}
+    if(board[ny]?.[nx]===0) open++;
+
+    nx=x-dx;ny=y-dy;
+    while(board[ny]?.[nx]===p){count++;nx-=dx;ny-=dy;}
+    if(board[ny]?.[nx]===0) open++;
+
+    if(count>=4 || (count===3 && open===2)){
+      threats++;
+    }
+  }
+
+  board[y][x] = 0;
+  return threats;
 }
 
 /* ===== 評価 ===== */
@@ -184,7 +212,7 @@ function evalPos(x,y,p){
   return score;
 }
 
-/* ===== 候補手 ===== */
+/* ===== 候補 ===== */
 function getMoves(){
 
   const list=[];
@@ -250,11 +278,32 @@ function cpuMove(){
     }
   }
 
-  // 3 ★危険防御（最重要）
+  // 3 ★ダブル脅威（攻め）
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]) continue;
+      if(countThreats(x,y,2) >= 2){
+        place(x,y,2);
+        return;
+      }
+    }
+  }
 
+  // 4 ★ダブル脅威防御
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]) continue;
+      if(countThreats(x,y,1) >= 2){
+        place(x,y,2);
+        return;
+      }
+    }
+  }
+
+  // 5 危険防御
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x]) continue;
       if(isDanger(x,y,1)){
         place(x,y,2);
         return;
@@ -262,7 +311,7 @@ function cpuMove(){
     }
   }
 
-  // 4 思考（相手の最善反撃を見る）
+  // 6 思考
   const moves = getMoves();
 
   let best=null;
