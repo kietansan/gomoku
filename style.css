@@ -3,12 +3,14 @@ body{
   flex-direction:column;
   align-items:center;
   background:#e8d3a8;
+  font-family:sans-serif;
 }
 
 /* 盤面 */
 #board{
   margin-top:20px;
-  position:relative;
+  background:#d8b56a;
+  padding:12px;
 }
 
 /* 行 */
@@ -18,21 +20,20 @@ body{
 
 /* 交点 */
 .node{
-  width:32px;
-  height:32px;
+  width:34px;
+  height:34px;
   position:relative;
 }
 
-/* ★線を描く（これが重要） */
-.node::before,
-.node::after{
-  content:"";
+/* ===== 線（完全分離） ===== */
+.h-line,
+.v-line{
   position:absolute;
   background:#2b1a10;
 }
 
 /* 横線 */
-.node::before{
+.h-line{
   top:50%;
   left:0;
   width:100%;
@@ -41,7 +42,7 @@ body{
 }
 
 /* 縦線 */
-.node::after{
+.v-line{
   left:50%;
   top:0;
   width:1px;
@@ -49,43 +50,36 @@ body{
   transform:translateX(-50%);
 }
 
-/* 外枠補正 */
-.row:first-child .node::before{ display:none; }
-.row:last-child .node::before{ display:none; }
-.node:first-child::after{ display:none; }
-.node:last-child::after{ display:none; }
-
-/* 星 */
-.node.star::marker{}
-.node.star::before,
-.node.star::after{ background:#2b1a10; }
-
-.node.star::after,
-.node.star::before{}
-
-/* 星点 */
-.node.star::after{
-  content:"";
+/* ===== 星（別レイヤー） ===== */
+.star{
+  position:absolute;
   width:6px;
   height:6px;
   background:#2b1a10;
   border-radius:50%;
-  position:absolute;
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
+  z-index:2;
 }
 
-/* 石 */
+/* ===== 石 ===== */
 .stone{
-  width:22px;
-  height:22px;
+  width:24px;
+  height:24px;
   border-radius:50%;
   position:absolute;
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
+  z-index:3;
 }
 
 .black{ background:black; }
 .white{ background:white; border:1px solid #999; }
+
+/* 最後の手 */
+.last{
+  outline:2px solid red;
+  outline-offset:-2px;
+}
