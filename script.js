@@ -74,9 +74,9 @@ function playerMove(x,y){
   const id = gameId;
 
   setTimeout(() => {
-    if(id !== gameId || gameOver) return;
+    if(gameOver || id !== gameId) return;
     cpuMove(id);
-  }, 30);
+  }, 0);
 }
 
 /* =========================
@@ -107,7 +107,7 @@ function cpuMove(id){
   m = findFork(2);
   if(m) return place(m.x,m.y,2);
 
-  // ⑥ 探索
+  // ⑥ 評価
   m = bestMove();
   return place(m.x,m.y,2);
 }
@@ -143,7 +143,6 @@ function getWinLine(x,y,p){
 
     let line = [{x,y}];
 
-    // 正方向
     let nx = x + dx;
     let ny = y + dy;
 
@@ -153,7 +152,6 @@ function getWinLine(x,y,p){
       ny += dy;
     }
 
-    // 逆方向
     nx = x - dx;
     ny = y - dy;
 
@@ -172,7 +170,7 @@ function getWinLine(x,y,p){
 }
 
 /* =========================
-   危険検知（3連以上）
+   危険検知
 ========================= */
 function findDanger(p){
 
@@ -184,8 +182,7 @@ function findDanger(p){
       board[y][x]=p;
 
       for(const [dx,dy] of DIRS){
-        const len = getLineCount(x,y,dx,dy,p);
-
+        const len = lineCount(x,y,dx,dy,p);
         if(len >= 3){
           board[y][x]=0;
           return {x,y};
@@ -214,7 +211,7 @@ function findFork(p){
       let t=0;
 
       for(const [dx,dy] of DIRS){
-        const len = getLineCount(x,y,dx,dy,p);
+        const len = lineCount(x,y,dx,dy,p);
         if(len===3) t++;
       }
 
@@ -230,7 +227,7 @@ function findFork(p){
 /* =========================
    ライン長
 ========================= */
-function getLineCount(x,y,dx,dy,p){
+function lineCount(x,y,dx,dy,p){
   let c=1;
 
   let nx=x+dx, ny=y+dy;
@@ -261,7 +258,7 @@ function bestMove(){
 
       board[y][x]=2;
 
-      let score = evaluate(2) - evaluate(1)*1.1;
+      let score = evaluate(2) - evaluate(1)*1.2;
 
       board[y][x]=0;
 
@@ -288,7 +285,7 @@ function evaluate(p){
       if(board[y][x]!==p) continue;
 
       for(const [dx,dy] of DIRS){
-        const len = getLineCount(x,y,dx,dy,p);
+        const len = lineCount(x,y,dx,dy,p);
 
         if(len>=5) score+=1000000;
         else if(len===4) score+=50000;
@@ -311,16 +308,17 @@ function place(x,y,p){
   board[y][x]=p;
   lastMove={x,y};
 
-  playSound();
   draw();
 
-  const winLine = getWinLine(x,y,p);
+  const win = getWinLine(x,y,p);
 
-  if(winLine){
+  if(win){
     gameOver=true;
     infoEl.textContent = (p===2 ? "CPUの勝ち" : "あなたの勝ち");
-    console.log("WIN LINE:", winLine);
+    console.log("WIN LINE:", win);
   }
+
+  playSound();
 }
 
 /* =========================
