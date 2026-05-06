@@ -1,165 +1,75 @@
-const SIZE = 13;
-
-let board = [];
-let gameOver = false;
-
-const boardEl = document.getElementById("board");
-const infoEl = document.getElementById("info");
-
-const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
-
-/* ===== 初期化 ===== */
-function init(){
-
-  boardEl.innerHTML = "";
-  board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
-  gameOver = false;
-
-  infoEl.textContent = "あなたの番です";
-
-  drawGrid();
-  draw();
-}
-window.resetGame = init;
-
-/* ===== グリッド生成 ===== */
-function drawGrid(){
-
-  const cellSize = 34;
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      const cell = document.createElement("div");
-      cell.className = "cell";
-      cell.style.left = x*cellSize + "px";
-      cell.style.top = y*cellSize + "px";
-
-      cell.onclick = () => clickCell(x,y);
-
-      boardEl.appendChild(cell);
-    }
-  }
+body{
+  text-align:center;
+  font-family:sans-serif;
+  background:#f5f5f5;
 }
 
-/* ===== 描画 ===== */
-function draw(){
-
-  document.querySelectorAll(".stone").forEach(e=>e.remove());
-
-  const cellSize = 34;
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]===0) continue;
-
-      const stone = document.createElement("div");
-      stone.className = "stone " + (board[y][x]===1 ? "black":"white");
-
-      stone.style.left = x*cellSize + "px";
-      stone.style.top = y*cellSize + "px";
-
-      boardEl.appendChild(stone);
-    }
-  }
+/* ===== 盤面全体 ===== */
+#board{
+  position:relative;
+  width:442px;
+  height:442px;
+  margin:20px auto;
+  background:#d8b56a;
+  border:2px solid #333;
+  box-shadow:0 4px 12px rgba(0,0,0,0.2);
 }
 
-/* ===== クリック ===== */
-function clickCell(x,y){
-
-  if(gameOver) return;
-  if(board[y][x]) return;
-
-  place(x,y,1);
-
-  if(!gameOver){
-    infoEl.textContent="CPU思考中...";
-    setTimeout(cpuMove,10);
-  }
+/* ===== 交点クリック領域 ===== */
+.cell{
+  position:absolute;
+  width:34px;
+  height:34px;
+  cursor:pointer;
+  box-sizing:border-box;
 }
 
-/* ===== 着手 ===== */
-function place(x,y,p){
-
-  board[y][x]=p;
-
-  draw();
-
-  if(checkWin(x,y,p)){
-    gameOver=true;
-    infoEl.textContent = p===1?"あなたの勝ち":"CPUの勝ち";
-  }
+/* hoverで分かりやすく（任意） */
+.cell:hover{
+  background:rgba(0,0,0,0.08);
 }
 
-/* ===== 勝利判定 ===== */
-function checkWin(x,y,p){
-
-  for(const [dx,dy] of DIRS){
-
-    let c=1;
-
-    for(const d of [-1,1]){
-
-      let nx=x+dx*d;
-      let ny=y+dy*d;
-
-      while(board[ny]?.[nx]===p){
-        c++;
-        nx+=dx*d;
-        ny+=dy*d;
-      }
-    }
-
-    if(c>=5) return true;
-  }
-
-  return false;
+/* ===== 石 ===== */
+.stone{
+  position:absolute;
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  box-shadow:0 2px 4px rgba(0,0,0,0.4);
 }
 
-/* ===== CPU（簡易安定版） ===== */
-function cpuMove(){
-
-  // 即勝ち
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(board[y][x]) continue;
-
-      board[y][x]=2;
-      if(checkWin(x,y,2)){
-        board[y][x]=0;
-        place(x,y,2);
-        return;
-      }
-      board[y][x]=0;
-    }
-  }
-
-  // 防御
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(board[y][x]) continue;
-
-      board[y][x]=1;
-      const danger = checkWin(x,y,1);
-      board[y][x]=0;
-
-      if(danger){
-        place(x,y,2);
-        return;
-      }
-    }
-  }
-
-  // 適当評価
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(!board[y][x]){
-        place(x,y,2);
-        return;
-      }
-    }
-  }
+/* 黒石 */
+.black{
+  background: radial-gradient(circle at 30% 30%, #444, #000);
 }
 
-init();
+/* 白石 */
+.white{
+  background: radial-gradient(circle at 30% 30%, #fff, #ddd);
+  border:1px solid #111;
+}
+
+/* ===== 情報表示 ===== */
+#info{
+  margin-top:10px;
+  font-size:18px;
+  font-weight:bold;
+}
+
+/* ===== ボタン ===== */
+button{
+  margin-top:10px;
+  padding:8px 16px;
+  font-size:14px;
+  cursor:pointer;
+  border:1px solid #333;
+  background:#fff;
+  border-radius:4px;
+}
+
+button:hover{
+  background:#eee;
+}
