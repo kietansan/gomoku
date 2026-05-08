@@ -17,12 +17,12 @@ body{
   gap:12px;
 }
 
-/* ★重要：表示だけレスポンシブ */
 canvas{
   width: min(92vw, 520px);
   height: min(92vw, 520px);
+
   display:block;
 
-  background:#3f7a44;
+  background:#d8b56a;
   border:4px solid #000;
 }
