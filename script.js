@@ -5,6 +5,7 @@ const BASE = 520;
 
 let canvas, ctx;
 let board = [];
+
 let gameOver = false;
 let current = 1;
 
@@ -23,7 +24,7 @@ window.onload = () => {
 };
 
 /* =========================
-   クリック（ここだけ補正）
+   クリック（ズレ完全防止）
 ========================= */
 function click(e){
 
@@ -62,11 +63,8 @@ function applyMove(x,y,p){
     return;
   }
 
-  current = (p === 1) ? 2 : 1;
-
-  if(current === 2){
-    setTimeout(cpuTurn,200);
-  }
+  current = 2;
+  setTimeout(cpuTurn,200);
 }
 
 /* =========================
@@ -150,10 +148,7 @@ function draw(){
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-
-      if(board[y][x]){
-        drawStone(x,y,board[y][x]);
-      }
+      if(board[y][x]) drawStone(x,y,board[y][x]);
     }
   }
 }
