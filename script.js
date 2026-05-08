@@ -1,22 +1,19 @@
 const SIZE = 13;
 const CELL = 40;
 const MARGIN = 40;
-const BASE = 520;
 
 let canvas, ctx;
 let board = [];
 
 let current = 1;
 let gameOver = false;
-let lock = false; // ★これ重要（暴走防止）
 
 window.onload = () => {
 
   canvas = document.getElementById("board");
   ctx = canvas.getContext("2d");
 
-  canvas.width = BASE;
-  canvas.height = BASE;
+  resizeCanvas();
 
   board = Array.from({length: SIZE}, () =>
     Array(SIZE).fill(0)
@@ -25,25 +22,41 @@ window.onload = () => {
   draw();
 
   canvas.addEventListener("click", click);
+
+  window.addEventListener("resize", resizeCanvas);
 };
 
 /* =========================
-   クリック（完全固定）
+   超重要：表示と内部を一致させる
+========================= */
+function resizeCanvas(){
+
+  const size = Math.min(window.innerWidth, window.innerHeight) * 0.9;
+
+  canvas.style.width = size + "px";
+  canvas.style.height = size + "px";
+
+  canvas.width = 520;
+  canvas.height = 520;
+}
+
+/* =========================
+   クリック（完全一致版）
 ========================= */
 function click(e){
 
-  if(gameOver || lock || current !== 1) return;
+  if(gameOver || current !== 1) return;
 
   const rect = canvas.getBoundingClientRect();
 
-  const mx = (e.clientX - rect.left);
-  const my = (e.clientY - rect.top);
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
 
-  const scaleX = BASE / rect.width;
-  const scaleY = BASE / rect.height;
+  const scaleX = 520 / rect.width;
+  const scaleY = 520 / rect.height;
 
-  const x = Math.floor(((mx * scaleX) - MARGIN) / CELL);
-  const y = Math.floor(((my * scaleY) - MARGIN) / CELL);
+  const x = Math.floor((mx * scaleX - MARGIN) / CELL);
+  const y = Math.floor((my * scaleY - MARGIN) / CELL);
 
   if(x<0||y<0||x>=SIZE||y>=SIZE) return;
   if(board[y][x]) return;
@@ -52,11 +65,9 @@ function click(e){
 }
 
 /* =========================
-   手処理（ここでターン制御）
+   手
 ========================= */
 function applyMove(x,y,p){
-
-  if(gameOver) return;
 
   board[y][x] = p;
 
@@ -69,52 +80,23 @@ function applyMove(x,y,p){
     return;
   }
 
-  current = (p === 1) ? 2 : 1;
-
-  if(current === 2){
-    cpuTurn();
-  }
+  current = 2;
+  setTimeout(cpuTurn,200);
 }
 
 /* =========================
-   CPU（暴走防止ロック）
+   CPU
 ========================= */
 function cpuTurn(){
 
-  if(gameOver || lock) return;
+  const move = cpuMove(board);
 
-  lock = true;
-
-  setTimeout(() => {
-
-    if(current !== 2){
-      lock = false;
-      return;
-    }
-
-    const move = cpuMove(board);
-
-    if(!move){
-      current = 1;
-      lock = false;
-      return;
-    }
-
-    board[move.y][move.x] = 2;
-
-    draw();
-
-    if(checkWin(2)){
-      gameOver = true;
-      alert("CPUの勝ち");
-      lock = false;
-      return;
-    }
-
+  if(!move){
     current = 1;
-    lock = false;
+    return;
+  }
 
-  }, 200);
+  applyMove(move.x, move.y, 2);
 }
 
 /* =========================
@@ -153,14 +135,14 @@ function checkWin(p){
 }
 
 /* =========================
-   描画（固定）
+   描画（520基準で統一）
 ========================= */
 function draw(){
 
-  ctx.clearRect(0,0,BASE,BASE);
+  ctx.clearRect(0,0,520,520);
 
   ctx.fillStyle = "#d8b56a";
-  ctx.fillRect(0,0,BASE,BASE);
+  ctx.fillRect(0,0,520,520);
 
   const boardSize = CELL * (SIZE - 1);
 
@@ -189,7 +171,7 @@ function draw(){
         ctx.arc(
           MARGIN + x*CELL,
           MARGIN + y*CELL,
-          CELL*0.4,
+          14,
           0,Math.PI*2
         );
         ctx.fillStyle = board[y][x] === 1 ? "#000" : "#fff";
@@ -222,7 +204,6 @@ function resetGame(){
 
   gameOver = false;
   current = 1;
-  lock = false;
 
   draw();
 }
