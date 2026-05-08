@@ -1,62 +1,88 @@
-const SIZE = 13;
-const CELL = 40;
-const MARGIN = 40;
+const SIZE = 8;
 const BASE = 520;
 
-let canvas, ctx;
-let board = [];
+const PADDING = 40;
+const BOARD_SIZE = BASE - PADDING * 2;
+const CELL = BOARD_SIZE / SIZE;
 
+let canvas, ctx;
+
+let board;
 let current = 1;
-let gameOver = false;
-let lock = false;
+
+let animating = false;
+
+const dirs = [
+  [-1,-1],[-1,0],[-1,1],
+  [0,-1],        [0,1],
+  [1,-1],[1,0],[1,1]
+];
 
 window.onload = () => {
 
   canvas = document.getElementById("board");
   ctx = canvas.getContext("2d");
 
+  document.getElementById("restartBtn")
+    .addEventListener("click", resetGame);
+
+  initBoard();
+  draw();
+
+  canvas.addEventListener("click", handleClick);
+};
+
+/* =========================
+   初期化
+========================= */
+function initBoard(){
+
   board = Array.from({length: SIZE}, () =>
     Array(SIZE).fill(0)
   );
 
-  draw();
-
-  canvas.addEventListener("click", click);
-};
+  board[3][3] = 2;
+  board[3][4] = 1;
+  board[4][3] = 1;
+  board[4][4] = 2;
+}
 
 /* =========================
-   座標変換（唯一の正解ルート）
+   座標変換（唯一の入口）
 ========================= */
-function screenToBoard(clientX, clientY){
+function toBoard(x,y){
 
   const rect = canvas.getBoundingClientRect();
 
   const scaleX = BASE / rect.width;
   const scaleY = BASE / rect.height;
 
-  const x = Math.floor(((clientX - rect.left) * scaleX - MARGIN) / CELL);
-  const y = Math.floor(((clientY - rect.top) * scaleY - MARGIN) / CELL);
+  const bx = Math.floor(((x - rect.left) * scaleX - PADDING) / CELL);
+  const by = Math.floor(((y - rect.top) * scaleY - PADDING) / CELL);
 
-  return {x,y};
+  return {bx,by};
 }
 
 /* =========================
-   クリック処理
+   クリック
 ========================= */
-function click(e){
+function handleClick(e){
 
-  if(gameOver || lock || current !== 1) return;
+  if(animating) return;
+  if(current !== 1) return;
 
-  const {x,y} = screenToBoard(e.clientX, e.clientY);
+  const {bx,by} = toBoard(e.clientX,e.clientY);
 
-  if(x<0||y<0||x>=SIZE||y>=SIZE) return;
-  if(board[y][x]) return;
+  if(!inRange(bx,by)) return;
 
-  place(x,y,1);
+  const flips = getFlips(bx,by,1);
+  if(flips.length === 0) return;
+
+  place(bx,by,1);
 }
 
 /* =========================
-   着手（共通）
+   着手処理
 ========================= */
 function place(x,y,p){
 
@@ -65,16 +91,10 @@ function place(x,y,p){
   draw();
   playSound();
 
-  if(checkWin(p)){
-    gameOver = true;
-    alert(p===1 ? "あなたの勝ち" : "CPUの勝ち");
-    return;
-  }
-
   current = (p === 1) ? 2 : 1;
 
   if(current === 2){
-    cpuTurn();
+    setTimeout(cpuTurn, 200);
   }
 }
 
@@ -83,61 +103,62 @@ function place(x,y,p){
 ========================= */
 function cpuTurn(){
 
-  if(gameOver || lock) return;
+  const cpuSelect = document.getElementById("cpuSelect");
 
-  lock = true;
+  let move;
 
-  setTimeout(() => {
+  if(cpuSelect.value === "easy"){
+    move = cpuMove(board);
+  }else if(cpuSelect.value === "hard"){
+    move = cpuMove2(board);
+  }else{
+    move = cpuMove3(board);
+  }
 
-    const move = cpuMove(board);
-
-    if(!move){
-      current = 1;
-      lock = false;
-      return;
-    }
-
-    place(move.x, move.y, 2);
-
+  if(!move){
     current = 1;
-    lock = false;
+    return;
+  }
 
-  }, 200);
+  place(move.x, move.y, 2);
 }
 
 /* =========================
-   勝利判定
+   反転判定
 ========================= */
-function checkWin(p){
+function getFlips(x,y,p){
 
-  const DIR = [[1,0],[0,1],[1,1],[1,-1]];
+  if(board[y][x] !== 0) return [];
 
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
+  const opp = p === 1 ? 2 : 1;
+  let flips = [];
 
-      if(board[y][x] !== p) continue;
+  for(const [dx,dy] of dirs){
 
-      for(const [dx,dy] of DIR){
+    let nx = x + dx;
+    let ny = y + dy;
 
-        let c = 1;
+    let tmp = [];
 
-        for(let i=1;i<5;i++){
+    while(inRange(nx,ny) && board[ny][nx] === opp){
+      tmp.push([nx,ny]);
+      nx += dx;
+      ny += dy;
+    }
 
-          const nx = x + dx*i;
-          const ny = y + dy*i;
-
-          if(nx<0||ny<0||nx>=SIZE||ny>=SIZE) break;
-          if(board[ny][nx] !== p) break;
-
-          c++;
-        }
-
-        if(c >= 5) return true;
-      }
+    if(inRange(nx,ny) && board[ny][nx] === p && tmp.length){
+      flips = flips.concat(tmp);
     }
   }
 
-  return false;
+  return flips;
+}
+
+/* =========================
+   範囲チェック
+========================= */
+function inRange(x,y){
+  return x>=0 && y>=0 && x<SIZE && y<SIZE;
 }
 
 /* =========================
@@ -147,25 +168,22 @@ function draw(){
 
   ctx.clearRect(0,0,BASE,BASE);
 
-  ctx.fillStyle = "#d8b56a";
-  ctx.fillRect(0,0,BASE,BASE);
-
   const boardSize = CELL * (SIZE - 1);
 
-  ctx.strokeStyle = "#333";
+  ctx.strokeStyle = "#000";
 
   for(let i=0;i<SIZE;i++){
 
-    const pos = MARGIN + i * CELL;
+    const p = PADDING + i * CELL;
 
     ctx.beginPath();
-    ctx.moveTo(pos,MARGIN);
-    ctx.lineTo(pos,MARGIN + boardSize);
+    ctx.moveTo(p,PADDING);
+    ctx.lineTo(p,PADDING+boardSize);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(MARGIN,pos);
-    ctx.lineTo(MARGIN + boardSize,pos);
+    ctx.moveTo(PADDING,p);
+    ctx.lineTo(PADDING+boardSize,p);
     ctx.stroke();
   }
 
@@ -176,8 +194,8 @@ function draw(){
 
       ctx.beginPath();
       ctx.arc(
-        MARGIN + x*CELL,
-        MARGIN + y*CELL,
+        PADDING + x*CELL,
+        PADDING + y*CELL,
         14,0,Math.PI*2
       );
 
@@ -204,13 +222,7 @@ function playSound(){
 ========================= */
 function resetGame(){
 
-  board = Array.from({length: SIZE}, () =>
-    Array(SIZE).fill(0)
-  );
-
-  gameOver = false;
+  initBoard();
   current = 1;
-  lock = false;
-
   draw();
 }
