@@ -1,16 +1,11 @@
 const SIZE = 13;
 const GRID = 12;
-const CELL = 40;
-const MARGIN = 40;
 
-let board = [];
 let canvas, ctx;
-let audio;
+let board = [];
 
 let gameOver = false;
 let isCpuThinking = false;
-
-const WOOD = "#d8b56a";
 
 const HOSHI = [
   [3,3],[3,9],
@@ -22,36 +17,32 @@ window.onload = () => {
 
   canvas = document.getElementById("board");
   ctx = canvas.getContext("2d");
-  audio = document.getElementById("putSound");
 
-  if(typeof cpuMove !== "function"){
-    showError("cpu.js が読み込まれていません");
-    return;
-  }
+  resizeCanvas();
 
-  canvas.width = GRID * CELL + MARGIN * 2;
-  canvas.height = GRID * CELL + MARGIN * 2;
-
-  board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+  board = Array.from({length: SIZE}, () =>
+    Array(SIZE).fill(0)
+  );
 
   draw();
 
   canvas.addEventListener("click", onClickBoard);
+
+  window.addEventListener("resize", () => {
+    resizeCanvas();
+    draw();
+  });
 };
 
 /* =========================
-   エラー表示
+   canvasレスポンシブ化
 ========================= */
-function showError(msg){
+function resizeCanvas(){
 
-  document.getElementById("info").innerText = "エラー: " + msg;
+  const size = Math.min(window.innerWidth, window.innerHeight) * 0.9;
 
-  ctx.fillStyle = "#300";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  ctx.fillStyle = "#fff";
-  ctx.font = "20px sans-serif";
-  ctx.fillText(msg, 20, 50);
+  canvas.width = size;
+  canvas.height = size;
 }
 
 /* =========================
@@ -63,8 +54,11 @@ function onClickBoard(e){
 
   const rect = canvas.getBoundingClientRect();
 
-  const x = Math.floor((e.clientX - rect.left - MARGIN + CELL/2) / CELL);
-  const y = Math.floor((e.clientY - rect.top - MARGIN + CELL/2) / CELL);
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  const x = Math.floor((e.clientX - rect.left) * scaleX / (canvas.width / SIZE));
+  const y = Math.floor((e.clientY - rect.top) * scaleY / (canvas.height / SIZE));
 
   if(x<0||y<0||x>=SIZE||y>=SIZE) return;
   if(board[y][x]) return;
@@ -72,10 +66,12 @@ function onClickBoard(e){
   board[y][x] = 1;
 
   draw();
+
   playSound();
 
   if(checkWin(1)){
-    endGame("あなたの勝ち！");
+    alert("あなたの勝ち！");
+    gameOver = true;
     return;
   }
 
@@ -83,20 +79,18 @@ function onClickBoard(e){
 }
 
 /* =========================
-   CPUターン（分離構造）
+   CPU
 ========================= */
 function cpuTurn(){
 
   isCpuThinking = true;
-  setInfo("CPU思考中...");
 
-  setTimeout(() => {
+  setTimeout(()=>{
 
-    // ★CPUは「座標だけ返す」
     const move = cpuMove(board);
 
     if(!move){
-      showError("CPUの手が取得できません");
+      isCpuThinking = false;
       return;
     }
 
@@ -106,18 +100,18 @@ function cpuTurn(){
     playSound();
 
     if(checkWin(2)){
-      endGame("CPUの勝ち！");
+      alert("CPUの勝ち！");
+      gameOver = true;
       return;
     }
 
     isCpuThinking = false;
-    setInfo("あなたの番です");
 
-  }, 300);
+  },300);
 }
 
 /* =========================
-   勝敗判定
+   勝利判定
 ========================= */
 function checkWin(player){
 
@@ -152,75 +146,58 @@ function checkWin(player){
 }
 
 /* =========================
-   終了処理
-========================= */
-function endGame(text){
-
-  gameOver = true;
-  setInfo(text);
-}
-
-/* =========================
    描画
 ========================= */
 function draw(){
 
-  ctx.fillStyle = WOOD;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const cell = canvas.width / SIZE;
 
   ctx.strokeStyle = "#333";
 
   for(let i=0;i<SIZE;i++){
 
     ctx.beginPath();
-    ctx.moveTo(MARGIN + i*CELL, MARGIN);
-    ctx.lineTo(MARGIN + i*CELL, MARGIN + GRID*CELL);
+    ctx.moveTo(cell*i,0);
+    ctx.lineTo(cell*i,canvas.height);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(MARGIN, MARGIN + i*CELL);
-    ctx.lineTo(MARGIN + GRID*CELL, MARGIN + i*CELL);
+    ctx.moveTo(0,cell*i);
+    ctx.lineTo(canvas.width,cell*i);
     ctx.stroke();
   }
 
   for(const [x,y] of HOSHI){
 
     ctx.beginPath();
-    ctx.arc(MARGIN + x*CELL, MARGIN + y*CELL, 3,0,Math.PI*2);
+    ctx.arc(x*cell, y*cell, 3,0,Math.PI*2);
     ctx.fillStyle="#222";
     ctx.fill();
   }
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-      if(board[y][x]) drawStone(x,y,board[y][x]);
+      if(board[y][x]){
+        drawStone(x,y,board[y][x],cell);
+      }
     }
   }
 }
 
 /* =========================
-   石描画
+   石
 ========================= */
-function drawStone(x,y,color){
+function drawStone(x,y,color,cell){
 
-  const cx = MARGIN + x*CELL;
-  const cy = MARGIN + y*CELL;
-
-  const grad = ctx.createRadialGradient(cx-4,cy-4,2,cx,cy,16);
-
-  if(color===1){
-    grad.addColorStop(0,"#666");
-    grad.addColorStop(0.3,"#111");
-    grad.addColorStop(1,"#000");
-  }else{
-    grad.addColorStop(0,"#fff");
-    grad.addColorStop(0.7,"#ddd");
-    grad.addColorStop(1,"#aaa");
-  }
+  const cx = x*cell;
+  const cy = y*cell;
 
   ctx.beginPath();
-  ctx.arc(cx,cy,14,0,Math.PI*2);
-  ctx.fillStyle = grad;
+  ctx.arc(cx,cy,cell*0.4,0,Math.PI*2);
+
+  ctx.fillStyle = color===1 ? "#000" : "#fff";
   ctx.fill();
 
   ctx.strokeStyle="rgba(0,0,0,0.3)";
@@ -228,19 +205,10 @@ function drawStone(x,y,color){
 }
 
 /* =========================
-   UI
-========================= */
-function setInfo(text){
-  document.getElementById("info").innerText = text;
-}
-
-/* =========================
    音
 ========================= */
 function playSound(){
-
-  if(!audio) return;
-
+  const audio = document.getElementById("putSound");
   audio.currentTime = 0;
   audio.play().catch(()=>{});
 }
@@ -248,14 +216,14 @@ function playSound(){
 /* =========================
    リセット
 ========================= */
-window.resetGame = () => {
+function resetGame(){
 
-  board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+  board = Array.from({length: SIZE}, () =>
+    Array(SIZE).fill(0)
+  );
 
   gameOver = false;
   isCpuThinking = false;
 
-  setInfo("あなたの番です");
-
   draw();
-};
+}
