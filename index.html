@@ -3,20 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>五目並べ</title>
+<title>リバーシ</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="wrap">
-  <h2 id="info">あなたの番です</h2>
+
+  <h2 id="info">黒の番</h2>
+
+  <div class="controls">
+    <select id="cpuSelect">
+      <option value="easy">簡単CPU</option>
+      <option value="hard">少し強いCPU</option>
+      <option value="strong">強いCPU</option>
+    </select>
+
+    <button id="restartBtn">リスタート</button>
+  </div>
+
   <canvas id="board" width="520" height="520"></canvas>
-  <button onclick="resetGame()">リセット</button>
+
 </div>
 
-<audio id="putSound" src="1.mp3" preload="auto"></audio>
+<audio id="putSound" src="2.mp3" preload="auto"></audio>
 
 <script src="cpu.js"></script>
+<script src="cpu2.js"></script>
+<script src="cpu3.js"></script>
 <script src="script.js"></script>
 
 </body>
