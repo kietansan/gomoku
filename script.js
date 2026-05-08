@@ -6,13 +6,17 @@ const BASE = 520;
 let canvas, ctx;
 let board = [];
 
-let gameOver = false;
 let current = 1;
+let gameOver = false;
+let lock = false; // ★これ重要（暴走防止）
 
 window.onload = () => {
 
   canvas = document.getElementById("board");
   ctx = canvas.getContext("2d");
+
+  canvas.width = BASE;
+  canvas.height = BASE;
 
   board = Array.from({length: SIZE}, () =>
     Array(SIZE).fill(0)
@@ -24,22 +28,22 @@ window.onload = () => {
 };
 
 /* =========================
-   クリック（ズレ完全防止）
+   クリック（完全固定）
 ========================= */
 function click(e){
 
-  if(gameOver || current !== 1) return;
+  if(gameOver || lock || current !== 1) return;
 
   const rect = canvas.getBoundingClientRect();
+
+  const mx = (e.clientX - rect.left);
+  const my = (e.clientY - rect.top);
 
   const scaleX = BASE / rect.width;
   const scaleY = BASE / rect.height;
 
-  const mx = (e.clientX - rect.left) * scaleX;
-  const my = (e.clientY - rect.top) * scaleY;
-
-  const x = Math.floor((mx - MARGIN) / CELL);
-  const y = Math.floor((my - MARGIN) / CELL);
+  const x = Math.floor(((mx * scaleX) - MARGIN) / CELL);
+  const y = Math.floor(((my * scaleY) - MARGIN) / CELL);
 
   if(x<0||y<0||x>=SIZE||y>=SIZE) return;
   if(board[y][x]) return;
@@ -48,9 +52,11 @@ function click(e){
 }
 
 /* =========================
-   手
+   手処理（ここでターン制御）
 ========================= */
 function applyMove(x,y,p){
+
+  if(gameOver) return;
 
   board[y][x] = p;
 
@@ -63,23 +69,52 @@ function applyMove(x,y,p){
     return;
   }
 
-  current = 2;
-  setTimeout(cpuTurn,200);
+  current = (p === 1) ? 2 : 1;
+
+  if(current === 2){
+    cpuTurn();
+  }
 }
 
 /* =========================
-   CPU
+   CPU（暴走防止ロック）
 ========================= */
 function cpuTurn(){
 
-  const move = cpuMove(board);
+  if(gameOver || lock) return;
 
-  if(!move){
+  lock = true;
+
+  setTimeout(() => {
+
+    if(current !== 2){
+      lock = false;
+      return;
+    }
+
+    const move = cpuMove(board);
+
+    if(!move){
+      current = 1;
+      lock = false;
+      return;
+    }
+
+    board[move.y][move.x] = 2;
+
+    draw();
+
+    if(checkWin(2)){
+      gameOver = true;
+      alert("CPUの勝ち");
+      lock = false;
+      return;
+    }
+
     current = 1;
-    return;
-  }
+    lock = false;
 
-  applyMove(move.x, move.y, 2);
+  }, 200);
 }
 
 /* =========================
@@ -118,7 +153,7 @@ function checkWin(p){
 }
 
 /* =========================
-   描画（固定盤面）
+   描画（固定）
 ========================= */
 function draw(){
 
@@ -136,36 +171,32 @@ function draw(){
     const pos = MARGIN + i * CELL;
 
     ctx.beginPath();
-    ctx.moveTo(pos, MARGIN);
-    ctx.lineTo(pos, MARGIN + boardSize);
+    ctx.moveTo(pos,MARGIN);
+    ctx.lineTo(pos,MARGIN + boardSize);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(MARGIN, pos);
-    ctx.lineTo(MARGIN + boardSize, pos);
+    ctx.moveTo(MARGIN,pos);
+    ctx.lineTo(MARGIN + boardSize,pos);
     ctx.stroke();
   }
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-      if(board[y][x]) drawStone(x,y,board[y][x]);
+
+      if(board[y][x]){
+        ctx.beginPath();
+        ctx.arc(
+          MARGIN + x*CELL,
+          MARGIN + y*CELL,
+          CELL*0.4,
+          0,Math.PI*2
+        );
+        ctx.fillStyle = board[y][x] === 1 ? "#000" : "#fff";
+        ctx.fill();
+      }
     }
   }
-}
-
-/* =========================
-   石
-========================= */
-function drawStone(x,y,p){
-
-  const cx = MARGIN + x * CELL;
-  const cy = MARGIN + y * CELL;
-
-  ctx.beginPath();
-  ctx.arc(cx,cy,CELL*0.4,0,Math.PI*2);
-
-  ctx.fillStyle = p===1 ? "#000" : "#fff";
-  ctx.fill();
 }
 
 /* =========================
@@ -191,6 +222,7 @@ function resetGame(){
 
   gameOver = false;
   current = 1;
+  lock = false;
 
   draw();
 }
