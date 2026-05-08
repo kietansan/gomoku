@@ -1,20 +1,22 @@
 body{
   margin:0;
-  text-align:center;
+  min-height:100vh;
+
+  display:flex;
+  justify-content:center;
+  align-items:center;
+
   font-family:sans-serif;
 
-  /* 背景画像 */
   background-image: url("2.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 
-  /* 見やすさ調整（重要） */
-  min-height: 100vh;
   position: relative;
 }
 
-/* 背景を少し暗くして盤面を見やすくする */
+/* 暗幕 */
 body::before{
   content:"";
   position:absolute;
@@ -23,18 +25,22 @@ body::before{
   z-index:0;
 }
 
-/* 中身を前面へ */
-#info, canvas, button{
-  position: relative;
+/* 中身をまとめて中央に */
+.wrap{
+  position:relative;
   z-index:1;
+
+  text-align:center;
 }
 
+/* 文字 */
 #info{
   margin:20px 0 10px;
   font-size:20px;
-  color:#fff; /* 背景に合わせて白寄り */
+  color:#fff;
 }
 
+/* 盤面 */
 canvas#board{
   display:block;
   margin:30px auto;
@@ -44,11 +50,12 @@ canvas#board{
   box-shadow:0 6px 20px rgba(0,0,0,0.35);
 }
 
+/* ボタン */
 button{
   padding:8px 16px;
   margin-top:10px;
 
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
 }
