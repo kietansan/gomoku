@@ -10,8 +10,6 @@ body{
 
   background:url("2.png") center/cover no-repeat;
   position:relative;
-
-  -webkit-tap-highlight-color: transparent;
 }
 
 body::before{
@@ -26,49 +24,30 @@ body::before{
   position:relative;
   z-index:1;
 
-  width:min(92vw, 520px);
+  width:min(92vw,520px);
 
   display:flex;
   flex-direction:column;
   align-items:center;
-
   gap:12px;
 
   padding:16px;
-
   background:rgba(255,255,255,0.85);
   border-radius:16px;
-
   box-shadow:0 10px 30px rgba(0,0,0,0.4);
-
-  backdrop-filter: blur(6px);
-}
-
-#info{
-  font-size:20px;
-  font-weight:bold;
-  color:#222;
-}
-
-button{
-  width:100%;
-  padding:10px 14px;
-
-  border:none;
-  border-radius:10px;
-
-  background:#333;
-  color:#fff;
-
-  font-size:14px;
-  cursor:pointer;
 }
 
 canvas{
   width:100%;
   height:auto;
-
   border-radius:10px;
+}
 
-  box-shadow:0 6px 18px rgba(0,0,0,0.35);
+button{
+  width:100%;
+  padding:10px;
+  border:none;
+  border-radius:10px;
+  background:#333;
+  color:#fff;
 }
