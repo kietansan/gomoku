@@ -14,7 +14,6 @@ body{
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 暗幕 */
 body::before{
   content:"";
   position:absolute;
@@ -27,7 +26,7 @@ body::before{
   position:relative;
   z-index:1;
 
-  width:min(92vw, 420px);
+  width:min(92vw, 520px);
 
   display:flex;
   flex-direction:column;
@@ -65,11 +64,6 @@ button{
   cursor:pointer;
 }
 
-button:active{
-  transform:scale(0.98);
-}
-
-/* canvasは完全レスポンシブ */
 canvas{
   width:100%;
   height:auto;
