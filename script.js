@@ -15,6 +15,13 @@ let lock = false;
 
 let hover = { x: -1, y: -1 };
 
+/* 星 */
+const HOSHI = [
+  [3,3],[3,9],
+  [9,3],[9,9],
+  [6,6]
+];
+
 window.onload = () => {
 
   canvas = document.getElementById("board");
@@ -27,9 +34,7 @@ window.onload = () => {
   canvas.addEventListener("mousemove", handleMove);
 };
 
-/* =========================
-   初期化
-========================= */
+/* 初期化 */
 function initBoard(){
 
   board = Array.from({length: SIZE}, () =>
@@ -37,9 +42,7 @@ function initBoard(){
   );
 }
 
-/* =========================
-   画面→盤面変換
-========================= */
+/* 画面→盤面変換 */
 function screenToBoard(clientX, clientY){
 
   const rect = canvas.getBoundingClientRect();
@@ -53,29 +56,21 @@ function screenToBoard(clientX, clientY){
   return {x,y};
 }
 
-/* =========================
-   マウス移動（カーソル）
-========================= */
+/* マウス移動（カーソル） */
 function handleMove(e){
-
-  if(gameOver) return;
 
   const {x,y} = screenToBoard(e.clientX, e.clientY);
 
   if(inRange(x,y)){
-    hover.x = x;
-    hover.y = y;
+    hover = {x,y};
   }else{
-    hover.x = -1;
-    hover.y = -1;
+    hover = {x:-1,y:-1};
   }
 
   draw();
 }
 
-/* =========================
-   クリック
-========================= */
+/* クリック */
 function handleClick(e){
 
   if(gameOver || lock) return;
@@ -89,9 +84,7 @@ function handleClick(e){
   place(x,y,1);
 }
 
-/* =========================
-   着手
-========================= */
+/* 着手 */
 function place(x,y,p){
 
   board[y][x] = p;
@@ -108,16 +101,12 @@ function place(x,y,p){
   current = (p === 1) ? 2 : 1;
 
   if(current === 2){
-    setTimeout(cpuTurn, 200);
+    setTimeout(cpuTurn,200);
   }
 }
 
-/* =========================
-   CPU
-========================= */
+/* CPU */
 function cpuTurn(){
-
-  if(gameOver) return;
 
   lock = true;
 
@@ -129,20 +118,16 @@ function cpuTurn(){
     return;
   }
 
-  place(move.x, move.y, 2);
+  place(move.x,move.y,2);
 
   current = 1;
   lock = false;
 }
 
-/* =========================
-   勝利判定
-========================= */
+/* 勝利判定 */
 function checkWin(x,y,p){
 
-  const DIR = [
-    [1,0],[0,1],[1,1],[1,-1]
-  ];
+  const DIR = [[1,0],[0,1],[1,1],[1,-1]];
 
   for(const [dx,dy] of DIR){
 
@@ -151,7 +136,6 @@ function checkWin(x,y,p){
     for(let i=1;i<5;i++){
       const nx = x + dx*i;
       const ny = y + dy*i;
-
       if(!inRange(nx,ny) || board[ny][nx] !== p) break;
       count++;
     }
@@ -159,7 +143,6 @@ function checkWin(x,y,p){
     for(let i=1;i<5;i++){
       const nx = x - dx*i;
       const ny = y - dy*i;
-
       if(!inRange(nx,ny) || board[ny][nx] !== p) break;
       count++;
     }
@@ -170,20 +153,17 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* =========================
-   範囲
-========================= */
+/* 範囲 */
 function inRange(x,y){
   return x>=0 && y>=0 && x<SIZE && y<SIZE;
 }
 
-/* =========================
-   描画
-========================= */
+/* 描画 */
 function draw(){
 
   ctx.clearRect(0,0,BASE,BASE);
 
+  /* 背景碁盤 */
   ctx.fillStyle = "#d8b56a";
   ctx.fillRect(0,0,BASE,BASE);
 
@@ -206,7 +186,23 @@ function draw(){
     ctx.stroke();
   }
 
-  // 石描画
+  /* 星 */
+  for(const [x,y] of HOSHI){
+
+    ctx.beginPath();
+    ctx.arc(
+      MARGIN + x * CELL,
+      MARGIN + y * CELL,
+      3,
+      0,
+      Math.PI * 2
+    );
+
+    ctx.fillStyle = "#222";
+    ctx.fill();
+  }
+
+  /* 石 */
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
@@ -224,9 +220,7 @@ function draw(){
     }
   }
 
-  // =========================
-  // 補助カーソル
-  // =========================
+  /* カーソル */
   if(!gameOver && current === 1 && hover.x >= 0){
 
     ctx.beginPath();
@@ -238,22 +232,15 @@ function draw(){
 
     ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.fill();
-
-    ctx.strokeStyle = "rgba(0,0,0,0.4)";
-    ctx.stroke();
   }
 }
 
-/* =========================
-   UI
-========================= */
+/* UI */
 function setInfo(text){
   document.getElementById("info").innerText = text;
 }
 
-/* =========================
-   音
-========================= */
+/* 音 */
 function playSound(){
 
   const a = document.getElementById("putSound");
@@ -263,9 +250,7 @@ function playSound(){
   a.play().catch(()=>{});
 }
 
-/* =========================
-   リセット
-========================= */
+/* リセット */
 function resetGame(){
 
   initBoard();
