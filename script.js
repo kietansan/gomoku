@@ -1,12 +1,10 @@
 const SIZE = 13;
+const CELL = 40;
+const MARGIN = 40;
 const BASE = 520;
 
 let canvas, ctx;
 let board = [];
-
-let CELL = 40;
-let MARGIN = 40;
-
 let gameOver = false;
 let current = 1;
 
@@ -15,8 +13,6 @@ window.onload = () => {
   canvas = document.getElementById("board");
   ctx = canvas.getContext("2d");
 
-  resize();
-
   board = Array.from({length: SIZE}, () =>
     Array(SIZE).fill(0)
   );
@@ -24,32 +20,10 @@ window.onload = () => {
   draw();
 
   canvas.addEventListener("click", click);
-
-  window.addEventListener("resize", () => {
-    resize();
-    draw();
-  });
 };
 
 /* =========================
-   盤面サイズ固定 + 表示だけ縮小
-========================= */
-function resize(){
-
-  const size = Math.min(window.innerWidth, window.innerHeight) * 0.9;
-
-  canvas.width = BASE;
-  canvas.height = BASE;
-
-  canvas.style.width = size + "px";
-  canvas.style.height = size + "px";
-
-  CELL = 40;
-  MARGIN = 40;
-}
-
-/* =========================
-   クリック（唯一の補正ポイント）
+   クリック（ここだけ補正）
 ========================= */
 function click(e){
 
@@ -73,7 +47,7 @@ function click(e){
 }
 
 /* =========================
-   手処理（必ずここ経由）
+   手
 ========================= */
 function applyMove(x,y,p){
 
@@ -84,13 +58,15 @@ function applyMove(x,y,p){
 
   if(checkWin(p)){
     gameOver = true;
-    alert(p===1?"あなたの勝ち":"CPUの勝ち");
+    alert(p===1 ? "あなたの勝ち" : "CPUの勝ち");
     return;
   }
 
-  current = 2;
+  current = (p === 1) ? 2 : 1;
 
-  setTimeout(cpuTurn,200);
+  if(current === 2){
+    setTimeout(cpuTurn,200);
+  }
 }
 
 /* =========================
@@ -106,8 +82,6 @@ function cpuTurn(){
   }
 
   applyMove(move.x, move.y, 2);
-
-  current = 1;
 }
 
 /* =========================
@@ -146,7 +120,7 @@ function checkWin(p){
 }
 
 /* =========================
-   描画（完全固定盤面）
+   描画（固定盤面）
 ========================= */
 function draw(){
 
@@ -155,9 +129,9 @@ function draw(){
   ctx.fillStyle = "#d8b56a";
   ctx.fillRect(0,0,BASE,BASE);
 
-  ctx.strokeStyle = "#333";
-
   const boardSize = CELL * (SIZE - 1);
+
+  ctx.strokeStyle = "#333";
 
   for(let i=0;i<SIZE;i++){
 
@@ -176,6 +150,7 @@ function draw(){
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
+
       if(board[y][x]){
         drawStone(x,y,board[y][x]);
       }
