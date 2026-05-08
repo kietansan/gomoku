@@ -6,11 +6,14 @@ const MARGIN = 40;
 const CELL = (BASE - MARGIN * 2) / (SIZE - 1);
 
 let canvas, ctx;
-let board;
 
+let board = [];
 let current = 1;
+
 let gameOver = false;
 let lock = false;
+
+let hover = { x: -1, y: -1 };
 
 window.onload = () => {
 
@@ -21,6 +24,7 @@ window.onload = () => {
   draw();
 
   canvas.addEventListener("click", handleClick);
+  canvas.addEventListener("mousemove", handleMove);
 };
 
 /* =========================
@@ -34,7 +38,7 @@ function initBoard(){
 }
 
 /* =========================
-   画面→盤面変換（唯一の入口）
+   画面→盤面変換
 ========================= */
 function screenToBoard(clientX, clientY){
 
@@ -50,7 +54,27 @@ function screenToBoard(clientX, clientY){
 }
 
 /* =========================
-   クリック処理
+   マウス移動（カーソル）
+========================= */
+function handleMove(e){
+
+  if(gameOver) return;
+
+  const {x,y} = screenToBoard(e.clientX, e.clientY);
+
+  if(inRange(x,y)){
+    hover.x = x;
+    hover.y = y;
+  }else{
+    hover.x = -1;
+    hover.y = -1;
+  }
+
+  draw();
+}
+
+/* =========================
+   クリック
 ========================= */
 function handleClick(e){
 
@@ -66,7 +90,7 @@ function handleClick(e){
 }
 
 /* =========================
-   着手処理
+   着手
 ========================= */
 function place(x,y,p){
 
@@ -89,7 +113,7 @@ function place(x,y,p){
 }
 
 /* =========================
-   CPU（外部流用）
+   CPU
 ========================= */
 function cpuTurn(){
 
@@ -112,7 +136,7 @@ function cpuTurn(){
 }
 
 /* =========================
-   勝利判定（5連）
+   勝利判定
 ========================= */
 function checkWin(x,y,p){
 
@@ -125,7 +149,6 @@ function checkWin(x,y,p){
     let count = 1;
 
     for(let i=1;i<5;i++){
-
       const nx = x + dx*i;
       const ny = y + dy*i;
 
@@ -134,7 +157,6 @@ function checkWin(x,y,p){
     }
 
     for(let i=1;i<5;i++){
-
       const nx = x - dx*i;
       const ny = y - dy*i;
 
@@ -156,7 +178,7 @@ function inRange(x,y){
 }
 
 /* =========================
-   描画（常に520基準）
+   描画
 ========================= */
 function draw(){
 
@@ -184,6 +206,7 @@ function draw(){
     ctx.stroke();
   }
 
+  // 石描画
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
@@ -199,6 +222,25 @@ function draw(){
       ctx.fillStyle = board[y][x] === 1 ? "#000" : "#fff";
       ctx.fill();
     }
+  }
+
+  // =========================
+  // 補助カーソル
+  // =========================
+  if(!gameOver && current === 1 && hover.x >= 0){
+
+    ctx.beginPath();
+    ctx.arc(
+      MARGIN + hover.x * CELL,
+      MARGIN + hover.y * CELL,
+      14,0,Math.PI*2
+    );
+
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(0,0,0,0.4)";
+    ctx.stroke();
   }
 }
 
@@ -230,6 +272,7 @@ function resetGame(){
   current = 1;
   gameOver = false;
   lock = false;
+  hover = {x:-1,y:-1};
 
   setInfo("あなたの番です");
 
