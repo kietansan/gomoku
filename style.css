@@ -2,24 +2,53 @@ body{
   margin:0;
   text-align:center;
   font-family:sans-serif;
-  background:#e6e0d2;
+
+  /* 背景画像 */
+  background-image: url("2.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  /* 見やすさ調整（重要） */
+  min-height: 100vh;
+  position: relative;
+}
+
+/* 背景を少し暗くして盤面を見やすくする */
+body::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background: rgba(0,0,0,0.25);
+  z-index:0;
+}
+
+/* 中身を前面へ */
+#info, canvas, button{
+  position: relative;
+  z-index:1;
 }
 
 #info{
   margin:20px 0 10px;
   font-size:20px;
-  color:#333;
+  color:#fff; /* 背景に合わせて白寄り */
 }
 
 canvas#board{
   display:block;
   margin:30px auto;
+
   background:#d8b56a;
   border-radius:6px;
-  box-shadow:0 6px 20px rgba(0,0,0,0.25);
+  box-shadow:0 6px 20px rgba(0,0,0,0.35);
 }
 
 button{
   padding:8px 16px;
   margin-top:10px;
+
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
 }
