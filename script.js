@@ -1,3 +1,4 @@
+
 const SIZE = 13;
 
 const BASE = 520;
@@ -15,7 +16,6 @@ let lock = false;
 
 let hover = { x: -1, y: -1 };
 
-/* 星 */
 const HOSHI = [
   [3,3],[3,9],
   [9,3],[9,9],
@@ -34,7 +34,9 @@ window.onload = () => {
   canvas.addEventListener("mousemove", handleMove);
 };
 
-/* 初期化 */
+/* =========================
+   初期化
+========================= */
 function initBoard(){
 
   board = Array.from({length: SIZE}, () =>
@@ -42,7 +44,9 @@ function initBoard(){
   );
 }
 
-/* 画面→盤面変換 */
+/* =========================
+   画面→盤面変換
+========================= */
 function screenToBoard(clientX, clientY){
 
   const rect = canvas.getBoundingClientRect();
@@ -56,7 +60,9 @@ function screenToBoard(clientX, clientY){
   return {x,y};
 }
 
-/* マウス移動（カーソル） */
+/* =========================
+   マウス移動（カーソル）
+========================= */
 function handleMove(e){
 
   const {x,y} = screenToBoard(e.clientX, e.clientY);
@@ -70,7 +76,9 @@ function handleMove(e){
   draw();
 }
 
-/* クリック */
+/* =========================
+   クリック
+========================= */
 function handleClick(e){
 
   if(gameOver || lock) return;
@@ -84,7 +92,9 @@ function handleClick(e){
   place(x,y,1);
 }
 
-/* 着手 */
+/* =========================
+   着手
+========================= */
 function place(x,y,p){
 
   board[y][x] = p;
@@ -105,7 +115,9 @@ function place(x,y,p){
   }
 }
 
-/* CPU */
+/* =========================
+   CPU（流用）
+========================= */
 function cpuTurn(){
 
   lock = true;
@@ -118,13 +130,15 @@ function cpuTurn(){
     return;
   }
 
-  place(move.x,move.y,2);
+  place(move.x, move.y, 2);
 
   current = 1;
   lock = false;
 }
 
-/* 勝利判定 */
+/* =========================
+   勝利判定
+========================= */
 function checkWin(x,y,p){
 
   const DIR = [[1,0],[0,1],[1,1],[1,-1]];
@@ -153,17 +167,21 @@ function checkWin(x,y,p){
   return false;
 }
 
-/* 範囲 */
+/* =========================
+   範囲
+========================= */
 function inRange(x,y){
   return x>=0 && y>=0 && x<SIZE && y<SIZE;
 }
 
-/* 描画 */
+/* =========================
+   描画
+========================= */
 function draw(){
 
   ctx.clearRect(0,0,BASE,BASE);
 
-  /* 背景碁盤 */
+  /* 碁盤 */
   ctx.fillStyle = "#d8b56a";
   ctx.fillRect(0,0,BASE,BASE);
 
@@ -202,20 +220,47 @@ function draw(){
     ctx.fill();
   }
 
-  /* 石 */
+  /* 石（リアル） */
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
       if(!board[y][x]) continue;
 
+      const cx = MARGIN + x * CELL;
+      const cy = MARGIN + y * CELL;
+      const r = 14;
+
+      /* 影 */
       ctx.beginPath();
-      ctx.arc(
-        MARGIN + x*CELL,
-        MARGIN + y*CELL,
-        14,0,Math.PI*2
+      ctx.arc(cx+2, cy+3, r, 0, Math.PI*2);
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.fill();
+
+      /* 本体 */
+      const grad = ctx.createRadialGradient(
+        cx-4, cy-4, 2,
+        cx, cy, r
       );
 
-      ctx.fillStyle = board[y][x] === 1 ? "#000" : "#fff";
+      if(board[y][x] === 1){
+        grad.addColorStop(0,"#666");
+        grad.addColorStop(0.4,"#111");
+        grad.addColorStop(1,"#000");
+      }else{
+        grad.addColorStop(0,"#fff");
+        grad.addColorStop(0.6,"#ddd");
+        grad.addColorStop(1,"#aaa");
+      }
+
+      ctx.beginPath();
+      ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      /* 光沢 */
+      ctx.beginPath();
+      ctx.arc(cx-4,cy-5,4,0,Math.PI*2);
+      ctx.fillStyle = "rgba(255,255,255,0.25)";
       ctx.fill();
     }
   }
@@ -235,12 +280,16 @@ function draw(){
   }
 }
 
-/* UI */
+/* =========================
+   UI
+========================= */
 function setInfo(text){
   document.getElementById("info").innerText = text;
 }
 
-/* 音 */
+/* =========================
+   音
+========================= */
 function playSound(){
 
   const a = document.getElementById("putSound");
@@ -250,7 +299,9 @@ function playSound(){
   a.play().catch(()=>{});
 }
 
-/* リセット */
+/* =========================
+   リセット
+========================= */
 function resetGame(){
 
   initBoard();
