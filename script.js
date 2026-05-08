@@ -4,10 +4,10 @@ const BASE = 520;
 let canvas, ctx;
 let board = [];
 
-let CELL, MARGIN;
+let CELL = 40;
+let MARGIN = 40;
 
 let gameOver = false;
-let animating = false;
 let current = 1;
 
 window.onload = () => {
@@ -32,33 +32,33 @@ window.onload = () => {
 };
 
 /* =========================
-   座標統一（最重要）
+   盤面サイズ固定 + 表示だけ縮小
 ========================= */
 function resize(){
 
   const size = Math.min(window.innerWidth, window.innerHeight) * 0.9;
 
-  canvas.width = size;
-  canvas.height = size;
+  canvas.width = BASE;
+  canvas.height = BASE;
 
-  const scale = size / BASE;
+  canvas.style.width = size + "px";
+  canvas.style.height = size + "px";
 
-  CELL = 40 * scale;
-  MARGIN = 40 * scale;
+  CELL = 40;
+  MARGIN = 40;
 }
 
 /* =========================
-   クリック（完全安定版）
+   クリック（唯一の補正ポイント）
 ========================= */
 function click(e){
 
-  if(gameOver || animating) return;
-  if(current !== 1) return;
+  if(gameOver || current !== 1) return;
 
   const rect = canvas.getBoundingClientRect();
 
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
+  const scaleX = BASE / rect.width;
+  const scaleY = BASE / rect.height;
 
   const mx = (e.clientX - rect.left) * scaleX;
   const my = (e.clientY - rect.top) * scaleY;
@@ -73,35 +73,30 @@ function click(e){
 }
 
 /* =========================
-   手の処理（必ずここを通る）
+   手処理（必ずここ経由）
 ========================= */
-function applyMove(x,y,player){
+function applyMove(x,y,p){
 
-  board[y][x] = player;
+  board[y][x] = p;
 
   playSound();
-
   draw();
 
-  if(checkWin(player)){
+  if(checkWin(p)){
     gameOver = true;
-    alert(player===1?"あなたの勝ち":"CPUの勝ち");
+    alert(p===1?"あなたの勝ち":"CPUの勝ち");
     return;
   }
 
-  current = player === 1 ? 2 : 1;
+  current = 2;
 
-  if(current === 2){
-    setTimeout(cpuTurn,200);
-  }
+  setTimeout(cpuTurn,200);
 }
 
 /* =========================
    CPU
 ========================= */
 function cpuTurn(){
-
-  if(gameOver) return;
 
   const move = cpuMove(board);
 
@@ -111,6 +106,8 @@ function cpuTurn(){
   }
 
   applyMove(move.x, move.y, 2);
+
+  current = 1;
 }
 
 /* =========================
@@ -149,14 +146,14 @@ function checkWin(p){
 }
 
 /* =========================
-   描画
+   描画（完全固定盤面）
 ========================= */
 function draw(){
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0,0,BASE,BASE);
 
   ctx.fillStyle = "#d8b56a";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillRect(0,0,BASE,BASE);
 
   ctx.strokeStyle = "#333";
 
@@ -202,7 +199,7 @@ function drawStone(x,y,p){
 }
 
 /* =========================
-   音（確実版）
+   音
 ========================= */
 function playSound(){
 
