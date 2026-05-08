@@ -1,16 +1,13 @@
 const SIZE = 13;
-const GRID = 12;
 const BASE = 520;
 
 let canvas, ctx;
 let board = [];
 
+let CELL, MARGIN, scale;
+
 let gameOver = false;
 let isCpuThinking = false;
-
-let scale;
-let CELL;
-let MARGIN;
 
 const HOSHI = [
   [3,3],[3,9],
@@ -40,7 +37,7 @@ window.onload = () => {
 };
 
 /* =========================
-   スケール設計（ここが核心）
+   重要：完全スケール統一
 ========================= */
 function resizeCanvas(){
 
@@ -56,7 +53,7 @@ function resizeCanvas(){
 }
 
 /* =========================
-   クリック（ズレ完全防止）
+   クリック（完全補正）
 ========================= */
 function onClickBoard(e){
 
@@ -64,8 +61,16 @@ function onClickBoard(e){
 
   const rect = canvas.getBoundingClientRect();
 
-  const x = Math.floor((e.clientX - rect.left - MARGIN) / CELL);
-  const y = Math.floor((e.clientY - rect.top - MARGIN) / CELL);
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  const x = Math.floor(
+    ((e.clientX - rect.left) * scaleX - MARGIN) / CELL
+  );
+
+  const y = Math.floor(
+    ((e.clientY - rect.top) * scaleY - MARGIN) / CELL
+  );
 
   if(x<0||y<0||x>=SIZE||y>=SIZE) return;
   if(board[y][x]) return;
@@ -152,7 +157,7 @@ function checkWin(p){
 }
 
 /* =========================
-   描画（碁盤感維持）
+   描画（碁盤完全復活）
 ========================= */
 function draw(){
 
@@ -164,18 +169,20 @@ function draw(){
   ctx.strokeStyle = "#333";
   ctx.lineWidth = 1 * scale;
 
+  const boardSize = CELL * (SIZE - 1);
+
   for(let i=0;i<SIZE;i++){
 
     const pos = MARGIN + i*CELL;
 
     ctx.beginPath();
     ctx.moveTo(pos, MARGIN);
-    ctx.lineTo(pos, MARGIN + CELL*(SIZE-1));
+    ctx.lineTo(pos, MARGIN + boardSize);
     ctx.stroke();
 
     ctx.beginPath();
     ctx.moveTo(MARGIN, pos);
-    ctx.lineTo(MARGIN + CELL*(SIZE-1), pos);
+    ctx.lineTo(MARGIN + boardSize, pos);
     ctx.stroke();
   }
 
@@ -184,7 +191,13 @@ function draw(){
   for(const [x,y] of HOSHI){
 
     ctx.beginPath();
-    ctx.arc(MARGIN + x*CELL, MARGIN + y*CELL, starR, 0, Math.PI*2);
+    ctx.arc(
+      MARGIN + x*CELL,
+      MARGIN + y*CELL,
+      starR,
+      0,
+      Math.PI*2
+    );
     ctx.fillStyle = "#222";
     ctx.fill();
   }
