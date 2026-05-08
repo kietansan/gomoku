@@ -1,11 +1,16 @@
 const SIZE = 13;
 const GRID = 12;
+const BASE = 520;
 
 let canvas, ctx;
 let board = [];
 
 let gameOver = false;
 let isCpuThinking = false;
+
+let scale;
+let CELL;
+let MARGIN;
 
 const HOSHI = [
   [3,3],[3,9],
@@ -35,7 +40,7 @@ window.onload = () => {
 };
 
 /* =========================
-   canvasレスポンシブ化
+   スケール設計（ここが核心）
 ========================= */
 function resizeCanvas(){
 
@@ -43,10 +48,15 @@ function resizeCanvas(){
 
   canvas.width = size;
   canvas.height = size;
+
+  scale = size / BASE;
+
+  CELL = 40 * scale;
+  MARGIN = 40 * scale;
 }
 
 /* =========================
-   クリック
+   クリック（ズレ完全防止）
 ========================= */
 function onClickBoard(e){
 
@@ -54,11 +64,8 @@ function onClickBoard(e){
 
   const rect = canvas.getBoundingClientRect();
 
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-
-  const x = Math.floor((e.clientX - rect.left) * scaleX / (canvas.width / SIZE));
-  const y = Math.floor((e.clientY - rect.top) * scaleY / (canvas.height / SIZE));
+  const x = Math.floor((e.clientX - rect.left - MARGIN) / CELL);
+  const y = Math.floor((e.clientY - rect.top - MARGIN) / CELL);
 
   if(x<0||y<0||x>=SIZE||y>=SIZE) return;
   if(board[y][x]) return;
@@ -66,7 +73,6 @@ function onClickBoard(e){
   board[y][x] = 1;
 
   draw();
-
   playSound();
 
   if(checkWin(1)){
@@ -113,18 +119,18 @@ function cpuTurn(){
 /* =========================
    勝利判定
 ========================= */
-function checkWin(player){
+function checkWin(p){
 
   const DIR = [[1,0],[0,1],[1,1],[1,-1]];
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
-      if(board[y][x] !== player) continue;
+      if(board[y][x] !== p) continue;
 
       for(const [dx,dy] of DIR){
 
-        let count = 1;
+        let c = 1;
 
         for(let i=1;i<5;i++){
 
@@ -132,12 +138,12 @@ function checkWin(player){
           const ny = y + dy*i;
 
           if(nx<0||ny<0||nx>=SIZE||ny>=SIZE) break;
-          if(board[ny][nx] !== player) break;
+          if(board[ny][nx] !== p) break;
 
-          count++;
+          c++;
         }
 
-        if(count >= 5) return true;
+        if(c >= 5) return true;
       }
     }
   }
@@ -146,41 +152,47 @@ function checkWin(player){
 }
 
 /* =========================
-   描画
+   描画（碁盤感維持）
 ========================= */
 function draw(){
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  const cell = canvas.width / SIZE;
+  ctx.fillStyle = "#d8b56a";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
 
   ctx.strokeStyle = "#333";
+  ctx.lineWidth = 1 * scale;
 
   for(let i=0;i<SIZE;i++){
 
+    const pos = MARGIN + i*CELL;
+
     ctx.beginPath();
-    ctx.moveTo(cell*i,0);
-    ctx.lineTo(cell*i,canvas.height);
+    ctx.moveTo(pos, MARGIN);
+    ctx.lineTo(pos, MARGIN + CELL*(SIZE-1));
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(0,cell*i);
-    ctx.lineTo(canvas.width,cell*i);
+    ctx.moveTo(MARGIN, pos);
+    ctx.lineTo(MARGIN + CELL*(SIZE-1), pos);
     ctx.stroke();
   }
+
+  const starR = 3 * scale;
 
   for(const [x,y] of HOSHI){
 
     ctx.beginPath();
-    ctx.arc(x*cell, y*cell, 3,0,Math.PI*2);
-    ctx.fillStyle="#222";
+    ctx.arc(MARGIN + x*CELL, MARGIN + y*CELL, starR, 0, Math.PI*2);
+    ctx.fillStyle = "#222";
     ctx.fill();
   }
 
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x]){
-        drawStone(x,y,board[y][x],cell);
+        drawStone(x,y,board[y][x]);
       }
     }
   }
@@ -189,15 +201,26 @@ function draw(){
 /* =========================
    石
 ========================= */
-function drawStone(x,y,color,cell){
+function drawStone(x,y,color){
 
-  const cx = x*cell;
-  const cy = y*cell;
+  const cx = MARGIN + x*CELL;
+  const cy = MARGIN + y*CELL;
+
+  const r = CELL * 0.4;
+
+  const grad = ctx.createRadialGradient(cx-4,cy-4,2,cx,cy,r);
+
+  if(color===1){
+    grad.addColorStop(0,"#666");
+    grad.addColorStop(1,"#000");
+  }else{
+    grad.addColorStop(0,"#fff");
+    grad.addColorStop(1,"#aaa");
+  }
 
   ctx.beginPath();
-  ctx.arc(cx,cy,cell*0.4,0,Math.PI*2);
-
-  ctx.fillStyle = color===1 ? "#000" : "#fff";
+  ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.fillStyle = grad;
   ctx.fill();
 
   ctx.strokeStyle="rgba(0,0,0,0.3)";
@@ -208,9 +231,9 @@ function drawStone(x,y,color,cell){
    音
 ========================= */
 function playSound(){
-  const audio = document.getElementById("putSound");
-  audio.currentTime = 0;
-  audio.play().catch(()=>{});
+  const a = document.getElementById("putSound");
+  a.currentTime = 0;
+  a.play().catch(()=>{});
 }
 
 /* =========================
