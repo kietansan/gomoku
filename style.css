@@ -7,10 +7,23 @@ body{
   align-items:center;
 
   font-family:sans-serif;
-  background:#222;
+
+  background:url("2.png") center/cover no-repeat;
+}
+
+/* 暗幕 */
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.25);
+  pointer-events:none;
 }
 
 .wrap{
+  position:relative;
+  z-index:1;
+
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -18,10 +31,8 @@ body{
 }
 
 canvas{
-  width: min(92vw, 520px);
-  height: min(92vw, 520px);
-
-  display:block;
+  width:min(92vw,520px);
+  height:min(92vw,520px);
 
   background:#d8b56a;
   border:4px solid #000;
