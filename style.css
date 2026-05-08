@@ -8,6 +8,7 @@ body{
 
   font-family:sans-serif;
 
+  /* 背景画像 */
   background-image: url("2.png");
   background-size: cover;
   background-position: center;
@@ -16,7 +17,7 @@ body{
   position: relative;
 }
 
-/* 暗幕 */
+/* 背景暗幕 */
 body::before{
   content:"";
   position:absolute;
@@ -25,37 +26,56 @@ body::before{
   z-index:0;
 }
 
-/* 中身をまとめて中央に */
+/* 全体コンテナ（中央＆縦並び固定） */
 .wrap{
   position:relative;
   z-index:1;
 
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+
+  gap:12px;
+
   text-align:center;
 }
 
-/* 文字 */
+/* ターン表示 */
 #info{
-  margin:20px 0 10px;
-  font-size:20px;
+  margin:0;
+  font-size:22px;
+  font-weight:bold;
   color:#fff;
+
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
 /* 盤面 */
 canvas#board{
   display:block;
-  margin:30px auto;
 
-  background:#d8b56a;
+  margin:0 auto;
+
+  background:#3f7a44;
   border-radius:6px;
+  border:4px solid black;
+
   box-shadow:0 6px 20px rgba(0,0,0,0.35);
 }
 
-/* ボタン */
+/* ボタン共通 */
 button{
   padding:8px 16px;
-  margin-top:10px;
 
   border:none;
   border-radius:6px;
+
   cursor:pointer;
+
+  font-size:14px;
+}
+
+/* hoverちょい改善 */
+button:hover{
+  opacity:0.85;
 }
