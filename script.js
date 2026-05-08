@@ -1,4 +1,3 @@
-
 const SIZE = 13;
 
 const BASE = 520;
@@ -14,8 +13,9 @@ let current = 1;
 let gameOver = false;
 let lock = false;
 
-let hover = { x: -1, y: -1 };
+let hover = { x:-1, y:-1 };
 
+/* 星 */
 const HOSHI = [
   [3,3],[3,9],
   [9,3],[9,9],
@@ -39,38 +39,72 @@ window.onload = () => {
 ========================= */
 function initBoard(){
 
-  board = Array.from({length: SIZE}, () =>
-    Array(SIZE).fill(0)
+  board = Array.from(
+    { length: SIZE },
+    () => Array(SIZE).fill(0)
   );
 }
 
 /* =========================
-   画面→盤面変換
+   交点→画面座標
 ========================= */
-function screenToBoard(clientX, clientY){
+function intersectionToScreen(x,y){
 
-  const rect = canvas.getBoundingClientRect();
-
-  const scaleX = BASE / rect.width;
-  const scaleY = BASE / rect.height;
-
-  const x = Math.floor(((clientX - rect.left) * scaleX - MARGIN) / CELL);
-  const y = Math.floor(((clientY - rect.top) * scaleY - MARGIN) / CELL);
-
-  return {x,y};
+  return {
+    px: MARGIN + x * CELL,
+    py: MARGIN + y * CELL
+  };
 }
 
 /* =========================
-   マウス移動（カーソル）
+   画面→交点
+   （最近傍交点スナップ）
+========================= */
+function screenToIntersection(clientX, clientY){
+
+  const rect = canvas.getBoundingClientRect();
+
+  /* CSS縮小補正 */
+  const scaleX = BASE / rect.width;
+  const scaleY = BASE / rect.height;
+
+  /* canvas内部座標 */
+  const px =
+    (clientX - rect.left) * scaleX;
+
+  const py =
+    (clientY - rect.top) * scaleY;
+
+  /* 最近傍交点へスナップ */
+  const x = Math.floor(
+    (px - MARGIN + CELL / 2) / CELL
+  );
+
+  const y = Math.floor(
+    (py - MARGIN + CELL / 2) / CELL
+  );
+
+  return { x, y };
+}
+
+/* =========================
+   マウス移動
 ========================= */
 function handleMove(e){
 
-  const {x,y} = screenToBoard(e.clientX, e.clientY);
+  const pos =
+    screenToIntersection(
+      e.clientX,
+      e.clientY
+    );
 
-  if(inRange(x,y)){
-    hover = {x,y};
+  if(inRange(pos.x, pos.y)){
+
+    hover = pos;
+
   }else{
-    hover = {x:-1,y:-1};
+
+    hover = { x:-1, y:-1 };
   }
 
   draw();
@@ -81,42 +115,61 @@ function handleMove(e){
 ========================= */
 function handleClick(e){
 
-  if(gameOver || lock) return;
+  if(gameOver) return;
+  if(lock) return;
   if(current !== 1) return;
 
-  const {x,y} = screenToBoard(e.clientX, e.clientY);
+  const pos =
+    screenToIntersection(
+      e.clientX,
+      e.clientY
+    );
+
+  const x = pos.x;
+  const y = pos.y;
 
   if(!inRange(x,y)) return;
   if(board[y][x]) return;
 
-  place(x,y,1);
+  placeStone(x,y,1);
 }
 
 /* =========================
-   着手
+   石を置く
 ========================= */
-function place(x,y,p){
+function placeStone(x,y,player){
 
-  board[y][x] = p;
+  board[y][x] = player;
 
   draw();
   playSound();
 
-  if(checkWin(x,y,p)){
+  if(checkWin(x,y,player)){
+
     gameOver = true;
-    setInfo(p === 1 ? "あなたの勝ち！" : "CPUの勝ち！");
+
+    setInfo(
+      player === 1
+      ? "あなたの勝ち！"
+      : "CPUの勝ち！"
+    );
+
     return;
   }
 
-  current = (p === 1) ? 2 : 1;
+  current =
+    player === 1 ? 2 : 1;
 
   if(current === 2){
-    setTimeout(cpuTurn,200);
+
+    setInfo("CPU思考中...");
+
+    setTimeout(cpuTurn, 250);
   }
 }
 
 /* =========================
-   CPU（流用）
+   CPUターン
 ========================= */
 function cpuTurn(){
 
@@ -125,43 +178,68 @@ function cpuTurn(){
   const move = cpuMove(board);
 
   if(!move){
+
     current = 1;
     lock = false;
+
+    setInfo("あなたの番です");
+
     return;
   }
 
-  place(move.x, move.y, 2);
+  placeStone(move.x, move.y, 2);
 
   current = 1;
   lock = false;
+
+  if(!gameOver){
+    setInfo("あなたの番です");
+  }
 }
 
 /* =========================
    勝利判定
 ========================= */
-function checkWin(x,y,p){
+function checkWin(x,y,player){
 
-  const DIR = [[1,0],[0,1],[1,1],[1,-1]];
+  const DIR = [
+    [1,0],
+    [0,1],
+    [1,1],
+    [1,-1]
+  ];
 
   for(const [dx,dy] of DIR){
 
     let count = 1;
 
+    /* 正方向 */
     for(let i=1;i<5;i++){
+
       const nx = x + dx*i;
       const ny = y + dy*i;
-      if(!inRange(nx,ny) || board[ny][nx] !== p) break;
+
+      if(!inRange(nx,ny)) break;
+      if(board[ny][nx] !== player) break;
+
       count++;
     }
 
+    /* 逆方向 */
     for(let i=1;i<5;i++){
+
       const nx = x - dx*i;
       const ny = y - dy*i;
-      if(!inRange(nx,ny) || board[ny][nx] !== p) break;
+
+      if(!inRange(nx,ny)) break;
+      if(board[ny][nx] !== player) break;
+
       count++;
     }
 
-    if(count >= 5) return true;
+    if(count >= 5){
+      return true;
+    }
   }
 
   return false;
@@ -171,7 +249,13 @@ function checkWin(x,y,p){
    範囲
 ========================= */
 function inRange(x,y){
-  return x>=0 && y>=0 && x<SIZE && y<SIZE;
+
+  return (
+    x >= 0 &&
+    y >= 0 &&
+    x < SIZE &&
+    y < SIZE
+  );
 }
 
 /* =========================
@@ -181,36 +265,52 @@ function draw(){
 
   ctx.clearRect(0,0,BASE,BASE);
 
-  /* 碁盤 */
+  /* 木 */
   ctx.fillStyle = "#d8b56a";
   ctx.fillRect(0,0,BASE,BASE);
 
-  const boardSize = CELL * (SIZE - 1);
+  const boardSize =
+    CELL * (SIZE - 1);
 
+  /* 線 */
   ctx.strokeStyle = "#333";
+  ctx.lineWidth = 1;
 
   for(let i=0;i<SIZE;i++){
 
-    const p = MARGIN + i * CELL;
+    const p =
+      MARGIN + i * CELL;
 
+    /* 縦 */
     ctx.beginPath();
-    ctx.moveTo(p,MARGIN);
-    ctx.lineTo(p,MARGIN + boardSize);
+    ctx.moveTo(p, MARGIN);
+    ctx.lineTo(
+      p,
+      MARGIN + boardSize
+    );
     ctx.stroke();
 
+    /* 横 */
     ctx.beginPath();
-    ctx.moveTo(MARGIN,p);
-    ctx.lineTo(MARGIN + boardSize,p);
+    ctx.moveTo(MARGIN, p);
+    ctx.lineTo(
+      MARGIN + boardSize,
+      p
+    );
     ctx.stroke();
   }
 
   /* 星 */
   for(const [x,y] of HOSHI){
 
+    const pos =
+      intersectionToScreen(x,y);
+
     ctx.beginPath();
+
     ctx.arc(
-      MARGIN + x * CELL,
-      MARGIN + y * CELL,
+      pos.px,
+      pos.py,
       3,
       0,
       Math.PI * 2
@@ -220,71 +320,140 @@ function draw(){
     ctx.fill();
   }
 
-  /* 石（リアル） */
+  /* 石 */
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
       if(!board[y][x]) continue;
 
-      const cx = MARGIN + x * CELL;
-      const cy = MARGIN + y * CELL;
-      const r = 14;
-
-      /* 影 */
-      ctx.beginPath();
-      ctx.arc(cx+2, cy+3, r, 0, Math.PI*2);
-      ctx.fillStyle = "rgba(0,0,0,0.25)";
-      ctx.fill();
-
-      /* 本体 */
-      const grad = ctx.createRadialGradient(
-        cx-4, cy-4, 2,
-        cx, cy, r
+      drawStone(
+        x,
+        y,
+        board[y][x]
       );
-
-      if(board[y][x] === 1){
-        grad.addColorStop(0,"#666");
-        grad.addColorStop(0.4,"#111");
-        grad.addColorStop(1,"#000");
-      }else{
-        grad.addColorStop(0,"#fff");
-        grad.addColorStop(0.6,"#ddd");
-        grad.addColorStop(1,"#aaa");
-      }
-
-      ctx.beginPath();
-      ctx.arc(cx,cy,r,0,Math.PI*2);
-      ctx.fillStyle = grad;
-      ctx.fill();
-
-      /* 光沢 */
-      ctx.beginPath();
-      ctx.arc(cx-4,cy-5,4,0,Math.PI*2);
-      ctx.fillStyle = "rgba(255,255,255,0.25)";
-      ctx.fill();
     }
   }
 
   /* カーソル */
-  if(!gameOver && current === 1 && hover.x >= 0){
+  if(
+    !gameOver &&
+    current === 1 &&
+    hover.x >= 0
+  ){
+
+    const pos =
+      intersectionToScreen(
+        hover.x,
+        hover.y
+      );
 
     ctx.beginPath();
+
     ctx.arc(
-      MARGIN + hover.x * CELL,
-      MARGIN + hover.y * CELL,
-      14,0,Math.PI*2
+      pos.px,
+      pos.py,
+      14,
+      0,
+      Math.PI * 2
     );
 
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.fillStyle =
+      "rgba(0,0,0,0.18)";
+
     ctx.fill();
   }
+}
+
+/* =========================
+   石描画
+========================= */
+function drawStone(x,y,color){
+
+  const pos =
+    intersectionToScreen(x,y);
+
+  const cx = pos.px;
+  const cy = pos.py;
+
+  const r = 14;
+
+  /* 影 */
+  ctx.beginPath();
+
+  ctx.arc(
+    cx + 2,
+    cy + 3,
+    r,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fillStyle =
+    "rgba(0,0,0,0.25)";
+
+  ctx.fill();
+
+  /* 本体 */
+  const grad =
+    ctx.createRadialGradient(
+      cx - 4,
+      cy - 4,
+      2,
+      cx,
+      cy,
+      r
+    );
+
+  if(color === 1){
+
+    grad.addColorStop(0,"#666");
+    grad.addColorStop(0.35,"#111");
+    grad.addColorStop(1,"#000");
+
+  }else{
+
+    grad.addColorStop(0,"#fff");
+    grad.addColorStop(0.7,"#ddd");
+    grad.addColorStop(1,"#aaa");
+  }
+
+  ctx.beginPath();
+
+  ctx.arc(
+    cx,
+    cy,
+    r,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  /* 光沢 */
+  ctx.beginPath();
+
+  ctx.arc(
+    cx - 4,
+    cy - 5,
+    4,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fillStyle =
+    "rgba(255,255,255,0.25)";
+
+  ctx.fill();
 }
 
 /* =========================
    UI
 ========================= */
 function setInfo(text){
-  document.getElementById("info").innerText = text;
+
+  document.getElementById("info")
+    .innerText = text;
 }
 
 /* =========================
@@ -292,11 +461,14 @@ function setInfo(text){
 ========================= */
 function playSound(){
 
-  const a = document.getElementById("putSound");
-  if(!a) return;
+  const audio =
+    document.getElementById("putSound");
 
-  a.currentTime = 0;
-  a.play().catch(()=>{});
+  if(!audio) return;
+
+  audio.currentTime = 0;
+
+  audio.play().catch(()=>{});
 }
 
 /* =========================
@@ -305,10 +477,13 @@ function playSound(){
 function resetGame(){
 
   initBoard();
+
   current = 1;
+
   gameOver = false;
   lock = false;
-  hover = {x:-1,y:-1};
+
+  hover = { x:-1, y:-1 };
 
   setInfo("あなたの番です");
 
