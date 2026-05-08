@@ -18,11 +18,10 @@ body{
   gap:12px;
 }
 
-/* ★ここがスマホ対応の核心 */
+/* ★重要：見た目だけレスポンシブ */
 canvas{
   width: min(92vw, 520px);
   height: min(92vw, 520px);
   display:block;
-
   background:#d8b56a;
 }
