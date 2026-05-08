@@ -7,7 +7,6 @@ body{
   align-items:center;
 
   font-family:sans-serif;
-
   background:#222;
 }
 
@@ -18,10 +17,12 @@ body{
   gap:12px;
 }
 
-/* ★重要：見た目だけレスポンシブ */
+/* ★重要：表示だけレスポンシブ */
 canvas{
   width: min(92vw, 520px);
   height: min(92vw, 520px);
   display:block;
-  background:#d8b56a;
+
+  background:#3f7a44;
+  border:4px solid #000;
 }
